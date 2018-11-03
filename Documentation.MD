@@ -12,7 +12,7 @@ This file system links to an application through which we can access files and d
 This library will inturn link with a layer that implements a disk.  
 
 ### Implementation Details:
-We will make a file system API that has 3 parts. Two of them are generic file system calls that deals with file access  
+We will make a file system API that has 3 parts. Two of them are generic file system calls that deals with file access
 and a set of calls that deals with directories.  
 
 #### File Access APIs  
@@ -31,7 +31,9 @@ This should update the current location of the file pointer.
  - int File_Close(int fd)  
 This closes the file referred to by file descriptor _fd_.  
  - int File_Unlink(char *file)  
-This should delete the file referenced by _file_, including removing its name from the directory it is in.  
+This should delete the file referenced by _file_, including removing its name from the directory it is in.
+
+
 #### Directory APIs  
  - int Dir_Create(char *path)  
 This creates a new directory as named by _path_.  
@@ -40,7 +42,9 @@ This returns the number of bytes in the directory refereed to by _path_.
  - int Dir_Read(char *path, void *buffer, int size)  
 This can be used to read the contents of a directory refered by _path_. 
  - int Dir_Unlink(char *path)  
-This removes a directory referred to by _path_, freeing up its inode and data blocks, and removing its entry from the parent directory.  
+This removes a directory referred to by _path_, freeing up its inode and data blocks, and removing its entry from the parent directory.
+
+
 ### Project Plan  
 - 3rd - 5th November, 2018      -   Understanding and documentation.
 - 6th - 10th November, 2018     -   file_create(), file_open() and file_read().
