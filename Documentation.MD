@@ -1,6 +1,6 @@
-#**Slower File System**
-##`Group Name - We are too young for this!`
-`Memebrs:`   
+#**Slower File System**  
+##`Group Name - We are too young for this!`  
+`Memebrs:`  
 `Rajat Dua - 2018201066`  
 `Indraneel Das - 2018202019`  
 `Sandeep Gupta - 2018201076`  
