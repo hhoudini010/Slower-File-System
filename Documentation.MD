@@ -30,9 +30,8 @@ This should write size bytes from buffer and write them into the file referenced
 This should update the current location of the file pointer.  
 - int File_Close(int fd)  
 This closes the file referred to by file descriptor _fd_.  
-
 - int File_Unlink(char *file)  
-This should delete the file referenced by _file_, including removing its name from the directory it is in.  
+This should delete the file referenced by _file_, including removing its name from the directory it is in.
 ####Directory APIs  
 - int Dir_Create(char *path)  
 This creates a new directory as named by _path_.  
@@ -44,9 +43,9 @@ This can be used to read the contents of a directory refered by _path_.
 This removes a directory referred to by _path_, freeing up its inode and data blocks, and removing its entry  
 from the parent directory.  
 ###Project Plan  
-- 3rd - 5th November, 2018      -   Understanding and documentation.  
-- 6th - 10th November, 2018     -   file_create(), file_open() and file_read().  
-- 11th - 15th November, 2018    -   file_write(),  file_seek(), file_close() and file_unlink().  
-- 15th - 20th November, 2018    -   dir_create(), dir_size(), dir_read() and dir_unlink().  
-- 20th - 25th November, 2018    -   Testing.  
-- 25th - 28th November, 2018    -   Report.  
+- 3rd - 5th November, 2018      -   Understanding and documentation.
+- 6th - 10th November, 2018     -   file_create(), file_open() and file_read().
+- 11th - 15th November, 2018    -   file_write(),  file_seek(), file_close() and file_unlink().
+- 15th - 20th November, 2018    -   dir_create(), dir_size(), dir_read() and dir_unlink().
+- 20th - 25th November, 2018    -   Testing.
+- 25th - 28th November, 2018    -   Report. 
