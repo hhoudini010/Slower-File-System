@@ -7,7 +7,7 @@ LIBS   =
 # files we need
 SRCS   = LibDisk.c 
 OBJS   = $(SRCS:.c=.o)
-TARGET = libDisk.so
+TARGET = libdisk.so
 
 all: $(TARGET)
 

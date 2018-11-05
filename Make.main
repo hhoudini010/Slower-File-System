@@ -1,5 +1,5 @@
 # options and such
-CC     = gcc
+CC     = g++ -std=c++11
 OPTS   = -O -Wall 
 INCS   = 
 LIBS   = -R. -L. -lFS -lDisk
