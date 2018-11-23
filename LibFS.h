@@ -10,10 +10,16 @@
 #include <unistd.h>
 #include <string.h>
 #include <string>
+#include <iostream>
 #define MAGIC_NUMBER "99"
+
+using namespace std;
 
 // used for errors
 extern int osErrno;
+
+extern char disk_path[1024];
+
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {

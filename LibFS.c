@@ -8,10 +8,10 @@ int Dir_Create(char *) ;
 
 
 int
-FS_Sync(char *path)
+FS_Sync()
 {
     printf("FS_Sync\n");
-    if(Disk_Save(path) == -1){
+    if(Disk_Save(disk_path) == -1){
         printf("Disk save error\n");
         osErrno = E_GENERAL;
         return -1 ;
@@ -29,10 +29,14 @@ init_bitmaps(){
         printf("Init Bitmap: Error");
         return -1;
     }
-    for(int i = 0; i < 17; i++){
+    for(int i = 0; i < 18; i++){
         buff[i] = 127;
+        Disk_Write(i,buff);
     }
-    buff[17] = 63;
+    buff[18] = 63;
+    Disk_Write(18,buff);
+
+    FS_Sync();
     return 0;
 }
 
@@ -41,6 +45,11 @@ FS_Boot(char *path)
 {
     printf("FS_Boot %s\n", path);
 
+
+    // disk_path = new char[strlen(path)] ;
+    strcpy(disk_path,path);
+
+    // cout<<path.
     // oops, check for errors
     if (Disk_Init() == -1) {
 	printf("Disk_Init() failed\n");
@@ -72,7 +81,7 @@ FS_Boot(char *path)
        
        Dir_Create("/") ;
 
-       if(FS_Sync(path) == -1) 
+       if(FS_Sync() == -1) 
             return -1 ;
        init_bitmaps();
     }
@@ -172,6 +181,7 @@ Dir_Create(char *path)
             if(buf[j] == 127)
                 continue;
             int bit_sector = (int)buf[j] ;
+            cout<<(int)buf[j];
             for(int k = 0 ; k < 7 ; k++)
             {
                 if(bit_sector % 2 == 0)
@@ -179,7 +189,7 @@ Dir_Create(char *path)
                     flag = 1;
                     break;
                 }    
-                b>>1;
+                bit_sector>>1;
                 empty_sector++;
             }
             if(flag)
@@ -189,7 +199,7 @@ Dir_Create(char *path)
             break;
     }
 
-    cout<<empty_sector;
+    cout<<"empty_sector = "<<empty_sector<<"\n";
 
     return 0;
 }
