@@ -17,7 +17,22 @@ FS_Sync(char *path)
 
     return 0;
 }
-
+//TODO - error handling in below function
+//creates a bitmap if new disk is initialized with system info.
+int
+init_bitmaps(){
+    char buff[512];
+    int read_status = Disk_Read(1, buff);
+    if(read_status == -1){
+        printf("Init Bitmap: Error");
+        return -1;
+    }
+    for(int i = 0; i < 17; i++){
+        buff[i] = 127;
+    }
+    buff[17] = 63;
+    return 0;
+}
 
 int 
 FS_Boot(char *path)
@@ -54,6 +69,7 @@ FS_Boot(char *path)
        }
        if(FS_Sync(path) == -1) 
             return -1 ;
+       init_bitmaps();
     }
 
     //Disk image exists.
@@ -69,7 +85,7 @@ FS_Boot(char *path)
        }
        //Checks if the first sector contains the magic number. If no, the disk is corrupted.
        if(strcmp(buf,MAGIC_NUMBER)==0)
-            printf("Success\n");
+           printf("Success\n");
         else{
             printf("Disk Corrupted\n");
             return -1 ;
