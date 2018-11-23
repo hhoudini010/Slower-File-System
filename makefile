@@ -5,7 +5,7 @@ OBJ = LibDisk.o LibFS.o main.o
 %.o: %.cpp $(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-dummyProject: $(OBJ)
+slfs: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
