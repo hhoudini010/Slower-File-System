@@ -4,6 +4,8 @@
 // global errno value here
 int osErrno;
 
+int Dir_Create(char *) ;
+
 
 int
 FS_Sync(char *path)
@@ -67,6 +69,9 @@ FS_Boot(char *path)
             osErrno = E_GENERAL ;
             return -1 ;
        }
+       
+       Dir_Create("/") ;
+
        if(FS_Sync(path) == -1) 
             return -1 ;
        init_bitmaps();
@@ -153,9 +158,38 @@ File_Unlink(char *file)
 int
 Dir_Create(char *path)
 {
+
     printf("Dir_Create %s\n", path);
+    int empty_sector = 0,flag;
+    flag = 0;
+    for (int i = 1; i <= 3; ++i)
+    {
+        char buf[SECTOR_SIZE] ;
+        Disk_Read(i,buf) ;
 
+        for(int j = 0 ; j < 512; j++)
+        {
+            if(buf[j] == 127)
+                continue;
+            int bit_sector = (int)buf[j] ;
+            for(int k = 0 ; k < 7 ; k++)
+            {
+                if(bit_sector % 2 == 0)
+                {
+                    flag = 1;
+                    break;
+                }    
+                b>>1;
+                empty_sector++;
+            }
+            if(flag)
+                break;
+        }
+        if(flag)
+            break;
+    }
 
+    cout<<empty_sector;
 
     return 0;
 }
