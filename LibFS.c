@@ -21,6 +21,7 @@ FS_Sync()
 }
 //TODO - error handling in below function
 //creates a bitmap if new disk is initialized with system info.
+
 int
 init_bitmaps(){
     char buff[512];
@@ -29,15 +30,52 @@ init_bitmaps(){
         printf("Init Bitmap: Error");
         return -1;
     }
-    for(int i = 0; i < 18; i++){
+    for(int i = 0; i < 19; i++){
         buff[i] = 127;
-        Disk_Write(i,buff);
     }
-    buff[18] = 63;
-    Disk_Write(18,buff);
+
+    Disk_Write(1,buff);
 
     FS_Sync();
     return 0;
+}
+
+//TODO : Error Handling, Remove cout
+//search for empty sector
+
+int
+find_sector(){
+
+    int empty_sector = 0,flag;
+    flag = 0;
+    for (int i = 1; i <= 3; ++i)
+    {
+        char buf[SECTOR_SIZE] ;
+        Disk_Read(i,buf) ;
+
+        for(int j = 0 ; j < 512; j++)
+        {
+            int bit_sector = (int)buf[j] ;
+            for(int k = 0 ; k < 7 ; k++)
+            {
+                if(bit_sector % 2 == 0)
+                {
+                    flag = 1;
+                    break;
+                }    
+                bit_sector = bit_sector>>1;
+                empty_sector++;
+            }
+            if(flag)
+                break;
+        }
+        if(flag)
+            break;
+    }
+
+    cout<<"empty_sector = "<<empty_sector<<"\n";
+    return empty_sector;
+
 }
 
 int 
@@ -46,10 +84,9 @@ FS_Boot(char *path)
     printf("FS_Boot %s\n", path);
 
 
-    // disk_path = new char[strlen(path)] ;
+    disk_path = new char[strlen(path)] ;
     strcpy(disk_path,path);
 
-    // cout<<path.
     // oops, check for errors
     if (Disk_Init() == -1) {
 	printf("Disk_Init() failed\n");
@@ -78,12 +115,12 @@ FS_Boot(char *path)
             osErrno = E_GENERAL ;
             return -1 ;
        }
-       
+       init_bitmaps();
        Dir_Create("/") ;
 
        if(FS_Sync() == -1) 
             return -1 ;
-       init_bitmaps();
+       
     }
 
     //Disk image exists.
@@ -168,38 +205,10 @@ int
 Dir_Create(char *path)
 {
 
+    int empty_sector;
     printf("Dir_Create %s\n", path);
-    int empty_sector = 0,flag;
-    flag = 0;
-    for (int i = 1; i <= 3; ++i)
-    {
-        char buf[SECTOR_SIZE] ;
-        Disk_Read(i,buf) ;
-
-        for(int j = 0 ; j < 512; j++)
-        {
-            if(buf[j] == 127)
-                continue;
-            int bit_sector = (int)buf[j] ;
-            cout<<(int)buf[j];
-            for(int k = 0 ; k < 7 ; k++)
-            {
-                if(bit_sector % 2 == 0)
-                {
-                    flag = 1;
-                    break;
-                }    
-                bit_sector>>1;
-                empty_sector++;
-            }
-            if(flag)
-                break;
-        }
-        if(flag)
-            break;
-    }
-
-    cout<<"empty_sector = "<<empty_sector<<"\n";
+    
+    empty_sector = find_sector();
 
     return 0;
 }
