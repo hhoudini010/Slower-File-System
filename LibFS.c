@@ -6,6 +6,34 @@ int osErrno;
 
 int Dir_Create(char *) ;
 
+char* get_name(char *path)
+{
+    int i,j ;
+
+    for( i = strlen(path)-1; i>=0; i--)
+    {
+        if(path[i] == '/')
+            break ;
+    }
+    char fname[16] ;
+
+    for(i,j=0; i < strlen(path); i++)
+    {
+        fname[j++] = path[i] ;
+    }
+
+    fname[j]='\0' ;
+    return fname ;
+}
+
+int checkvalid(char *fname)
+{
+    for(int i = 0 ; i < strlen(fname); ++i)
+        if(!((fname[i] >= 'a' && fname[i] <= 'z') || (fname[i] >= '0' && fname[i] <= '9') || fname[i] == '.' || fname[i] == '-' || fname[i] == '_'|| fname[i] == '/'))
+            return 0 ;
+    return 1 ;
+}   
+
 
 int
 FS_Sync()
@@ -205,20 +233,25 @@ int
 Dir_Create(char *path)
 {
 
+    char buf[SECTOR_SIZE] ;
     int empty_sector;
     printf("Dir_Create %s\n", path);
     
     empty_sector = find_sector();
+    char fname[16] ;
+
+    strcpy(fname,get_name(path)) ;
+    
+    int st = checkvalid(fname) ;
+
+    if(st)
+        cout<<"valid"<<endl ;
+    else
+        cout<<"Invalid"<<endl ;
 
     return 0;
 }
 
-int
-Dir_Size(char *path)
-{
-    printf("Dir_Size\n");
-    return 0;
-}
 
 int
 Dir_Read(char *path, void *buffer, int size)
