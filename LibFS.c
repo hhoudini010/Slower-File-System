@@ -144,9 +144,9 @@ FS_Boot(char *path)
             return -1 ;
        }
        init_bitmaps();
-       Dir_Create("/") ;
+       Dir_Create("/ab/sande$") ;
 
-       if(FS_Sync() == -1) 
+       if(FS_Sync() == -1)
             return -1 ;
        
     }
@@ -239,6 +239,7 @@ Dir_Create(char *path)
     
     empty_sector = find_sector();
     char fname[16] ;
+
 
     strcpy(fname,get_name(path)) ;
     
