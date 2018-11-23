@@ -18,13 +18,50 @@ FS_Boot(char *path)
 
     // do all of the other stuff needed...
 
+    int load_status = Disk_Load(path) ;
+
+    if(load_status == -1 && diskErrno == E_INVALID_PARAM){
+        printf("Invalid Parameter.\n");
+        osErrno =  E_GENERAL ;
+       return -1 ;
+    }
+
+    //If disk image does not exist, create a new image
+    if(load_status == -1 && diskErrno == E_OPENING_FILE)
+    {
+        //Creating new disk image.
+       int write_status = Disk_Write(0,MAGIC_NUMBER) ;
+      FS_Sync(path) ;
+    }
+
+    //Disk image exists.
+    else 
+    {
+       char buf[512];
+       Disk_Read(0,buf) ;
+       if(strcmp(buf,MAGIC_NUMBER)!=0)
+            printf("Success\n");
+        else
+            printf("Disk Corrupted\n");
+
+    }
+
+    printf("Boot Complete\n");
+
+
     return 0;
 }
 
 int
-FS_Sync()
+FS_Sync(char *path)
 {
     printf("FS_Sync\n");
+    if(Disk_Save(path) == -1){
+        printf("Disk save error\n");
+        osErrno = E_GENERAL;
+        return -1 ;
+    }
+
     return 0;
 }
 

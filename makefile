@@ -8,3 +8,6 @@ OBJ = LibDisk.o LibFS.o main.o
 dummyProject: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
+clean:
+	rm -f $(OBJ)
+
