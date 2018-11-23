@@ -4,6 +4,21 @@
 // global errno value here
 int osErrno;
 
+
+int
+FS_Sync(char *path)
+{
+    printf("FS_Sync\n");
+    if(Disk_Save(path) == -1){
+        printf("Disk save error\n");
+        osErrno = E_GENERAL;
+        return -1 ;
+    }
+
+    return 0;
+}
+
+
 int 
 FS_Boot(char *path)
 {
@@ -30,19 +45,35 @@ FS_Boot(char *path)
     if(load_status == -1 && diskErrno == E_OPENING_FILE)
     {
         //Creating new disk image.
-       int write_status = Disk_Write(0,MAGIC_NUMBER) ;
-      FS_Sync(path) ;
+      int write_status = Disk_Write(0,MAGIC_NUMBER) ;
+      if(write_status == -1 && diskErrno == E_MEM_OP)
+       {
+            printf("Write failed.\n");
+            osErrno = E_GENERAL ;
+            return -1 ;
+       }
+       if(FS_Sync(path) == -1) 
+            return -1 ;
     }
 
     //Disk image exists.
     else 
     {
        char buf[512];
-       Disk_Read(0,buf) ;
-       if(strcmp(buf,MAGIC_NUMBER)!=0)
+       int read_status = Disk_Read(0,buf) ;
+       if(read_status == -1 && diskErrno == E_MEM_OP)
+       {
+            printf("Read failed.\n");
+            osErrno = E_GENERAL ;
+            return -1 ;
+       }
+       //Checks if the first sector contains the magic number. If no, the disk is corrupted.
+       if(strcmp(buf,MAGIC_NUMBER)==0)
             printf("Success\n");
-        else
+        else{
             printf("Disk Corrupted\n");
+            return -1 ;
+        }
 
     }
 
@@ -51,20 +82,6 @@ FS_Boot(char *path)
 
     return 0;
 }
-
-int
-FS_Sync(char *path)
-{
-    printf("FS_Sync\n");
-    if(Disk_Save(path) == -1){
-        printf("Disk save error\n");
-        osErrno = E_GENERAL;
-        return -1 ;
-    }
-
-    return 0;
-}
-
 
 int
 File_Create(char *file)

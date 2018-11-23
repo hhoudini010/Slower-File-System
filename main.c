@@ -19,7 +19,6 @@ main(int argc, char *argv[])
 
     
     FS_Boot(path);
-    FS_Sync();
 
 
     return 0;
