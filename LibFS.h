@@ -17,8 +17,7 @@ using namespace std;
 
 // used for errors
 extern int osErrno;
-
-extern char disk_path[1024];
+char *disk_path;
 
     
 // error types - don't change anything about these!! (even the order!)
