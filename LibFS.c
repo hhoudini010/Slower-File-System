@@ -6,6 +6,7 @@ int osErrno;
 
 int Dir_Create(char *) ;
 
+//TODO - Check error
 void get_name(char *path,char *fname)
 {
     int i,j ;
