@@ -34,7 +34,6 @@ int checkvalid(char *fname)
     return 1 ;
 }   
 
-
 int
 FS_Sync()
 {
@@ -251,6 +250,7 @@ Dir_Create(char *path)
 
     return 0;
 }
+
 
 int
 Dir_Size(char *path)
