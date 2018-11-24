@@ -22,15 +22,17 @@ int
 find_free_space(int return_array[2]){
 
     char buff[SECTOR_SIZE];
-    int i, table_sector, offset;
+    int i, table_sector, offset, actual_offset;
 
     Disk_Read(4, buff);
     for(i = 0; i < 64; i += 8){
         if(buff[i] == 0){
             table_sector = 4;
             offset = i;
+            actual_offset = i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -40,8 +42,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 5;
             offset = i;
+            actual_offset = 64 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -51,8 +55,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 6;
             offset = i;
+            actual_offset = 128 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -62,8 +68,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 7;
             offset = i;
+            actual_offset = 192 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -75,12 +83,13 @@ int
 make_open_file_table(int sector_number, int fragment){
 
     char buff[SECTOR_SIZE];
-    int info_array[2] = {0, 0};
-    int i, table_sector, offset;
+    int info_array[3] = {0, 0, 0};
+    int i, table_sector, offset, actual_offset;
     int status = find_free_space(info_array);
 
     table_sector = info_array[0];
     offset = info_array[1];
+    actual_offset = info_array[2];
     Disk_Read(table_sector, buff);
 
     buff[offset] = 1;
@@ -96,7 +105,7 @@ make_open_file_table(int sector_number, int fragment){
     Disk_Write(table_sector, buff);
     FS_Sync();
 
-    return offset;
+    return actual_offset;
 }
 
 int
@@ -437,7 +446,7 @@ File_Create(char *path)
 int
 File_Open(char *path)
 {
-    int arr[2];
+    int arr[3];
     if(find_free_space(arr) == -1){
         printf("File Open: Too Many Open Files.\n");
         osErrno = E_TOO_MANY_OPEN_FILES;
