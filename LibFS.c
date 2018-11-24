@@ -8,7 +8,7 @@ int Dir_Create(char *) ;
 
 //TODO - Check error
 void zero_init(){
-    int buff[SECTOR_SIZE];
+    char buff[SECTOR_SIZE];
     for(int j = 0; j < SECTOR_SIZE; j++){
         buff[j] = '\0';
     }
