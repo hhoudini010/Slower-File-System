@@ -17,7 +17,8 @@ void zero_init(){
     }
 }
 
-void get_name(char *path,char *fname)
+int 
+get_name(char *path,char *fname)
 {
     int i,j ;
 
@@ -26,14 +27,19 @@ void get_name(char *path,char *fname)
         if(path[i] == '/')
             break ;
     }
-    // char fname[16] ;
-
-    for(i,j=0; i < strlen(path); i++)
+    
+    for(i+=1,j=0; i < strlen(path); i++)
     {
         fname[j++] = path[i] ;
+        if(j == 16)
+            return 0;
     }
-
+    if(j==0)
+        return 0;
     fname[j]='\0' ;
+
+    return 1;
+
 }
 
 int checkvalid(char *fname)
@@ -205,7 +211,7 @@ FS_Boot(char *path)
             return -1 ;
        }
        init_bitmaps();
-       Dir_Create("/") ;
+       Dir_Create("/abc") ;
 
        if(FS_Sync() == -1) 
             return -1 ;
@@ -304,8 +310,19 @@ Dir_Create(char *path)
 
     empty_sector = find_sector();
     char fname[16];
-    get_name(path,fname);
 
+    //Incase of root directory
+    if(strcmp(path,"/")==0)
+    {
+        make_inode(empty_sector,1,path);
+        return 0;
+    }
+    
+    if(get_name(path,fname) == 0)
+    {
+        printf("Directory name\n");
+        return 0;
+    }
     printf("File Name = %s\n",fname );
     int st = checkvalid(fname) ;
 
@@ -314,7 +331,9 @@ Dir_Create(char *path)
     else
         printf("invalid\n");
     make_inode(empty_sector, 1, fname);
+
     return 0;
+
 }
 
 
