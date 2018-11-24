@@ -22,15 +22,17 @@ int
 find_free_space(int return_array[2]){
 
     char buff[SECTOR_SIZE];
-    int i, table_sector, offset;
+    int i, table_sector, offset, actual_offset;
 
     Disk_Read(4, buff);
     for(i = 0; i < 64; i += 8){
         if(buff[i] == 0){
             table_sector = 4;
             offset = i;
+            actual_offset = i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -40,8 +42,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 5;
             offset = i;
+            actual_offset = 64 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -51,8 +55,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 6;
             offset = i;
+            actual_offset = 128 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -62,8 +68,10 @@ find_free_space(int return_array[2]){
         if(buff[i] == 0){
             table_sector = 7;
             offset = i;
+            actual_offset = 192 + i;
             return_array[0] = table_sector;
             return_array[1] = offset;
+            return_array[2] = actual_offset;
             return 0;
         }
     }
@@ -75,12 +83,13 @@ int
 make_open_file_table(int sector_number, int fragment){
 
     char buff[SECTOR_SIZE];
-    int info_array[2] = {0, 0};
-    int i, table_sector, offset;
+    int info_array[3] = {0, 0, 0};
+    int i, table_sector, offset, actual_offset;
     int status = find_free_space(info_array);
 
     table_sector = info_array[0];
     offset = info_array[1];
+    actual_offset = info_array[2];
     Disk_Read(table_sector, buff);
 
     buff[offset] = 1;
@@ -96,7 +105,7 @@ make_open_file_table(int sector_number, int fragment){
     Disk_Write(table_sector, buff);
     FS_Sync();
 
-    return offset;
+    return (actual_offset/8);
 }
 
 int
@@ -308,8 +317,9 @@ FS_Boot(char *path)
        Dir_Create("/a/b/c");
        File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
-       File_Open("/a/b/c/abc.txt");
+       int x = File_Open("/a/b/c/abc.txt");
        File_Open("/a/b/c/abcd.txt");
+       File_Close(x);
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -437,7 +447,7 @@ File_Create(char *path)
 int
 File_Open(char *path)
 {
-    int arr[2];
+    int arr[3];
     if(find_free_space(arr) == -1){
         printf("File Open: Too Many Open Files.\n");
         osErrno = E_TOO_MANY_OPEN_FILES;
@@ -486,7 +496,39 @@ File_Seek(int fd, int offset)
 int
 File_Close(int fd)
 {
-    printf("FS_Close\n");
+
+    int i, table_sector, offset;
+    char buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        offset = (fd*8) - 192;
+    }
+
+    Disk_Read(table_sector, buff);
+    if(buff[offset] == 0){
+        printf("File Close: File Not Open\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+
+    for(i = offset; i < 8; i++){
+        buff[i] = '\0';
+    }
+    Disk_Write(table_sector, buff);
+
     return 0;
 }
 
