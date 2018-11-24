@@ -9,11 +9,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
 #define MAGIC_NUMBER "99"
 
 // used for errors
 extern int osErrno;
-char *disk_path;
+char * disk_path;
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {

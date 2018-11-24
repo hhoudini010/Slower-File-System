@@ -7,6 +7,16 @@ int osErrno;
 int Dir_Create(char *) ;
 
 //TODO - Check error
+void zero_init(){
+    char buff[SECTOR_SIZE];
+    for(int j = 0; j < SECTOR_SIZE; j++){
+        buff[j] = '\0';
+    }
+    for (int i = 0; i < 10000; i++){
+        Disk_Write(i, buff);
+    }
+}
+
 void get_name(char *path,char *fname)
 {
     int i,j ;
@@ -24,7 +34,6 @@ void get_name(char *path,char *fname)
     }
 
     fname[j]='\0' ;
-    
 }
 
 int checkvalid(char *fname)
@@ -35,6 +44,53 @@ int checkvalid(char *fname)
     return 1 ;
 }   
 
+
+//TODO - error handling
+int
+make_inode (int sector_number, int mode, char *name){
+    char buff[SECTOR_SIZE];
+    int offset, number_of_inodes, i;
+    Disk_Read(sector_number, buff);
+
+    if (buff[0] != 'i'){
+        buff[0] = 'i';
+        buff[1] = 1;
+        offset = 2;
+    }
+    else if(buff[0] == 'i'){
+        if(buff[1] < 3) {
+            number_of_inodes = buff[1];
+            offset = (141 * number_of_inodes) + 2;
+            buff[1] += 1;
+        }
+    }
+
+    buff[offset] = 0;
+    for(i = 0; i < 16; i++){
+        buff[offset + i + 2] = name[i];
+    }
+    buff[offset + i + 2] = '\0';
+    if(mode)
+        buff[offset + 1] = 'd';
+    else
+        buff[offset + 1] = 'f';
+    Disk_Write(sector_number, buff);
+    FS_Sync();
+
+    if(buff[1] == 3){
+        int bitmap_sector = (sector_number/(SECTOR_SIZE * 7)) + 1;
+        int sector_index = (sector_number / 7);
+        int sector_offset = (sector_number % 7);
+        char bitmap_buffer[SECTOR_SIZE];
+        Disk_Read(bitmap_sector, bitmap_buffer);
+        int val = bitmap_buffer[sector_index];
+        int new_val = val + pow(2, sector_offset);
+        bitmap_buffer[sector_index] = new_val;
+        Disk_Write(bitmap_sector, bitmap_buffer);
+        FS_Sync();
+    }
+    return 0;
+}
 
 int
 FS_Sync()
@@ -91,7 +147,8 @@ find_sector(){
                 {
                     flag = 1;
                     break;
-                }    
+
+                }
                 bit_sector = bit_sector>>1;
                 empty_sector++;
             }
@@ -108,7 +165,7 @@ find_sector(){
 
 }
 
-int 
+int
 FS_Boot(char *path)
 {
     printf("FS_Boot %s\n", path);
@@ -132,16 +189,17 @@ FS_Boot(char *path)
     if(load_status == -1 && diskErrno == E_INVALID_PARAM){
         printf("Invalid Parameter.\n");
         osErrno =  E_GENERAL ;
-       return -1 ;
+        return -1 ;
     }
 
     //If disk image does not exist, create a new image
     if(load_status == -1 && diskErrno == E_OPENING_FILE)
     {
+        zero_init();
         //Creating new disk image.
-      int write_status = Disk_Write(0,MAGIC_NUMBER) ;
-      if(write_status == -1 && diskErrno == E_MEM_OP)
-       {
+        int write_status = Disk_Write(0,MAGIC_NUMBER) ;
+        if(write_status == -1 && diskErrno == E_MEM_OP)
+        {
             printf("Write failed.\n");
             osErrno = E_GENERAL ;
             return -1 ;
@@ -151,23 +209,22 @@ FS_Boot(char *path)
 
        if(FS_Sync() == -1) 
             return -1 ;
-       
     }
 
-    //Disk image exists.
-    else 
+        //Disk image exists.
+    else
     {
-       char buf[512];
-       int read_status = Disk_Read(0,buf) ;
-       if(read_status == -1 && diskErrno == E_MEM_OP)
-       {
+        char buf[512];
+        int read_status = Disk_Read(0,buf) ;
+        if(read_status == -1 && diskErrno == E_MEM_OP)
+        {
             printf("Read failed.\n");
             osErrno = E_GENERAL ;
             return -1 ;
-       }
-       //Checks if the first sector contains the magic number. If no, the disk is corrupted.
-       if(strcmp(buf,MAGIC_NUMBER)==0)
-           printf("Success\n");
+        }
+        //Checks if the first sector contains the magic number. If no, the disk is corrupted.
+        if(strcmp(buf,MAGIC_NUMBER)==0)
+            printf("Success\n");
         else{
             printf("Disk Corrupted\n");
             return -1 ;
@@ -185,6 +242,11 @@ int
 File_Create(char *file)
 {
     printf("FS_Create\n");
+    /*    create a new inode
+        Mode bit 0 - file
+        Mode bit 1 - directory */
+    int sector_number = find_sector();
+    make_inode(sector_number, 0, file);
     return 0;
 }
 
@@ -239,24 +301,19 @@ Dir_Create(char *path)
     char buf[SECTOR_SIZE] ;
     int empty_sector;
     printf("Dir_Create %s\n", path);
-    
+
     empty_sector = find_sector();
     char fname[16];
     get_name(path,fname);
-    // fname = (char*)malloc(16);
-    // printf("%ld\n",sizeof(get_name(path)) );
 
-    // strcpy(fname,get_name(path)) ;
-    // fname = get_name(path);
     printf("File Name = %s\n",fname );
     int st = checkvalid(fname) ;
 
     if(st)
-        // cout<<"valid"<<endl ;
         printf("valid\n");
     else
-        // cout<<"Invalid"<<endl ;
         printf("invalid\n");
+    make_inode(empty_sector, 1, fname);
     return 0;
 }
 

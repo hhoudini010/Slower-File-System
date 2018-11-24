@@ -6,7 +6,7 @@ OBJ = LibDisk.o LibFS.o main.o
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 dummyProject: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 clean:
 	rm -f $(OBJ)
