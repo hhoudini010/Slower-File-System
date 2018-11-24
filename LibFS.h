@@ -15,6 +15,7 @@
 // used for errors
 extern int osErrno;
 char * disk_path;
+int root_inode,root_fragment;
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {
