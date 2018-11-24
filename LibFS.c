@@ -319,14 +319,10 @@ FS_Boot(char *path)
        Dir_Create("/a/b/c");
        File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
-<<<<<<< HEAD
        int x = File_Open("/a/b/c/abc.txt");
        File_Open("/a/b/c/abcd.txt");
        File_Close(x);
-=======
-       File_Create("/abcdefghijkl.txt");
-       File_Open("/a/b/c/abc.txt");
->>>>>>> Dir_read donegit add .
+
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -968,12 +964,6 @@ Dir_Read(char *path, char *buffer, int sz)
     int offset = (141 * (inode_fragment)) + 2  ;
 
     int size=(int)buf[offset];
-
-    // if(sizeof(buffer)<size*20)
-    // {
-    //     osErrno = E_BUFFER_TOO_SMALL;
-    //     return -1;
-    // }
 
     
     int start = offset + 17 ;
