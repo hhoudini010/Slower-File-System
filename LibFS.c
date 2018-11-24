@@ -7,7 +7,8 @@ int osErrno;
 int Dir_Create(char *) ;
 
 //TODO - Check error
-void zero_init(){
+void
+zero_init(){
     char buff[SECTOR_SIZE];
     for(int j = 0; j < SECTOR_SIZE; j++){
         buff[j] = '\0';
@@ -17,30 +18,85 @@ void zero_init(){
     }
 }
 
-int make_open_file_table(int sector_number, int fragment){
-    char buff[SECTOR_SIZE];
-    int offset, i, table_sector;
+int
+find_free_space(int return_array[2]){
 
-    if(next_free_fd < 100){
-        table_sector = 4;
+    char buff[SECTOR_SIZE];
+    int i, table_sector, offset;
+
+    Disk_Read(4, buff);
+    for(i = 0; i < 64; i += 8){
+        if(buff[i] == 0){
+            table_sector = 4;
+            offset = i;
+            return_array[0] = table_sector;
+            return_array[1] = offset;
+            return 0;
+        }
     }
-    else if(next_free_fd > 99 && next_free_fd < 200){
-        table_sector = 5;
+
+    Disk_Read(5, buff);
+    for(i = 0; i < 64; i += 8){
+        if(buff[i] == 0){
+            table_sector = 5;
+            offset = i;
+            return_array[0] = table_sector;
+            return_array[1] = offset;
+            return 0;
+        }
     }
-    else if(next_free_fd > 199 && next_free_fd < 300){
-        table_sector = 6;
+
+    Disk_Read(6, buff);
+    for(i = 0; i < 64; i += 8){
+        if(buff[i] == 0){
+            table_sector = 6;
+            offset = i;
+            return_array[0] = table_sector;
+            return_array[1] = offset;
+            return 0;
+        }
     }
+
+    Disk_Read(7, buff);
+    for(i = 0; i < 64; i += 8){
+        if(buff[i] == 0){
+            table_sector = 7;
+            offset = i;
+            return_array[0] = table_sector;
+            return_array[1] = offset;
+            return 0;
+        }
+    }
+    printf("Find Free Space: Can't Open Any More Files\n");
+    return -1;
+}
+
+int
+make_open_file_table(int sector_number, int fragment){
+
+    char buff[SECTOR_SIZE];
+    int info_array[2] = {0, 0};
+    int i, table_sector, offset;
+    int status = find_free_space(info_array);
+
+    table_sector = info_array[0];
+    offset = info_array[1];
     Disk_Read(table_sector, buff);
-    offset = (next_free_fd % 100);
-    for(i = 3; i >= 0; i--){
+
+    buff[offset] = 1;
+    for(i = 4; i >= 1; i--){
         buff[offset + i] = sector_number % 10;
         sector_number /= 10;
     }
-    buff[offset + 4] = fragment;
+
+    buff[offset + 5] = fragment;
+    buff[offset + 6] = 0;
+    buff[offset + 7] = 0;
+
     Disk_Write(table_sector, buff);
     FS_Sync();
-    next_free_fd += 1;
-    return next_free_fd -1;
+
+    return offset;
 }
 
 int
@@ -68,7 +124,8 @@ get_name(char *path,char *fname)
 
 }
 
-int checkvalid(char *fname)
+int
+checkvalid(char *fname)
 {
     for(int i = 0 ; i < strlen(fname); ++i)
         if(!((fname[i] >= 'a' && fname[i] <= 'z') || (fname[i] >= '0' && fname[i] <= '9') || fname[i] == '.' || fname[i] == '-' || fname[i] == '_'|| fname[i] == '/'))
@@ -120,9 +177,11 @@ make_inode (int sector_number, int mode, char *name){
         int sector_index = (sector_number / 7);
         int sector_offset = (sector_number % 7);
         char bitmap_buffer[SECTOR_SIZE];
+
         Disk_Read(bitmap_sector, bitmap_buffer);
         int val = bitmap_buffer[sector_index];
         int new_val = val + pow(2, sector_offset);
+
         bitmap_buffer[sector_index] = new_val;
         Disk_Write(bitmap_sector, bitmap_buffer);
         FS_Sync();
@@ -153,10 +212,9 @@ init_bitmaps(){
         printf("Init Bitmap: Error");
         return -1;
     }
-    for(int i = 0; i < 1; i++){
-        buff[i] = 127;
-    }
 
+    buff[0] = 127;
+    buff[1] = 1;
     Disk_Write(1, buff);
 
     FS_Sync();
@@ -248,9 +306,10 @@ FS_Boot(char *path)
        Dir_Create("/a");
        Dir_Create("/a/b");
        Dir_Create("/a/b/c");
+       File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
-       File_Create("/a/ab.txt");
        File_Open("/a/b/c/abc.txt");
+       File_Open("/a/b/c/abcd.txt");
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -378,7 +437,9 @@ File_Create(char *path)
 int
 File_Open(char *path)
 {
-    if(next_free_fd > 256){
+    int arr[2];
+    if(find_free_space(arr) == -1){
+        printf("File Open: Too Many Open Files.\n");
         osErrno = E_TOO_MANY_OPEN_FILES;
         return -1;
     }
@@ -827,62 +888,7 @@ int Dir_Size(char *path)
 
    return siz ;
 
-    
-
  }
-
- // void getfromtable(int *inode_sector, int *inode_fragment)
- // {
- //    char temp[5] ;
- //    int frag1,sec1 ;
- //    int k1 = 0,j1 ;
-
- //    int start1 = 2 ;
-
- //    for(int i1 = 0 ; i1 < newbuf[1] ; i1++)
- //    {
- //        k1 = 0;
- //        sec1 = 0;
- //        for(j1 = start1 ; j1 < start1 + 4; j1++)
- //            se1c = sec1 * 10 + newbuf[j] ;
- //        frag1 = newbuf[j];
- //        start1+=5 ;
- //    }
- // }
- 
-
-
-
-         
-
-   //       //TODO - Change count < 1 to count < size after correction
-
-   //      for(int i = start,count = 0 ;count < 1 ;i+=4)
-   //      {
-
-   //          char temp[5] ;
-   //          tab = 0 ;
-   //          for(int j = 0 ; j < 4 ; j++)
-   //         {
-   //             tab = tab * 10 + buf[i+j] ;
-   //          }
-           
-   //         // printf("Hey val %d\n", tab);
-   //          Disk_Read(tab,newbuf) ;
-
-   //          int st = checkintable(newbuf, dir_inode, dir_fragment,file_name) ;
-   //          if(st)
-   //          {
-   //              // open_dir(new_path,dir_inode,dir_fragment,fname) ;
-   //              break ;
-   //          }
-   //          else
-   //              count++ ;
-   //     }
-
-
-//}
-
 
 int
 Dir_Read(char *path, void *buffer, int size)
