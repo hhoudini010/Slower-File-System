@@ -105,7 +105,7 @@ make_open_file_table(int sector_number, int fragment){
     Disk_Write(table_sector, buff);
     FS_Sync();
 
-    return actual_offset;
+    return (actual_offset/8);
 }
 
 int
@@ -317,8 +317,9 @@ FS_Boot(char *path)
        Dir_Create("/a/b/c");
        File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
-       File_Open("/a/b/c/abc.txt");
+       int x = File_Open("/a/b/c/abc.txt");
        File_Open("/a/b/c/abcd.txt");
+       File_Close(x);
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -495,7 +496,39 @@ File_Seek(int fd, int offset)
 int
 File_Close(int fd)
 {
-    printf("FS_Close\n");
+
+    int i, table_sector, offset;
+    char buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        offset = (fd*8) - 192;
+    }
+
+    Disk_Read(table_sector, buff);
+    if(buff[offset] == 0){
+        printf("File Close: File Not Open\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+
+    for(i = offset; i < 8; i++){
+        buff[i] = '\0';
+    }
+    Disk_Write(table_sector, buff);
+
     return 0;
 }
 
