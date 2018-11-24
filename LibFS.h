@@ -52,7 +52,7 @@ int File_Unlink(char *file);
 int open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname);
 int Dir_Create(char *path);
 int Dir_Size(char *path);
-int Dir_Read(char *path, void *buffer, int size);
+int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
 
 #endif /* __LibFS_h__ */

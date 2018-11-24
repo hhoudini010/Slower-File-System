@@ -313,13 +313,20 @@ FS_Boot(char *path)
        init_bitmaps();
        Dir_Create("/");
        Dir_Create("/a");
+       Dir_Create("/e");
+       Dir_Create("/f");
        Dir_Create("/a/b");
        Dir_Create("/a/b/c");
        File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
+<<<<<<< HEAD
        int x = File_Open("/a/b/c/abc.txt");
        File_Open("/a/b/c/abcd.txt");
        File_Close(x);
+=======
+       File_Create("/abcdefghijkl.txt");
+       File_Open("/a/b/c/abc.txt");
+>>>>>>> Dir_read donegit add .
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -359,7 +366,14 @@ FS_Boot(char *path)
         }
         printf("\n\n");
 
-       int siz = Dir_Size("/") ;
+        char buffer [512];
+       int siz = Dir_Read("/",buffer,40) ;
+
+       for(int i = 0; i<512; i++){
+            printf("%c ", buffer[i]);
+        }
+        printf("\n\n");
+
 
        if(FS_Sync() == -1)
             return -1 ;
@@ -933,10 +947,106 @@ int Dir_Size(char *path)
  }
 
 int
-Dir_Read(char *path, void *buffer, int size)
+Dir_Read(char *path, char *buffer, int sz)
 {
     printf("Dir_Read\n");
-    return 0;
+
+    
+
+    int inode_sector=root_inode;
+    int inode_fragment=root_fragment;
+    char new_path[280],read_buffer[1024],newbuf[1024],file_name[16];
+    strcpy(new_path,path);
+    strcat(new_path,"/dummy");
+    printf("%s\n",path);
+
+    open_dir(new_path,&inode_sector,&inode_fragment,file_name);
+
+    char buf[SECTOR_SIZE];
+    Disk_Read(inode_sector,buf) ;
+
+    int offset = (141 * (inode_fragment)) + 2  ;
+
+    int size=(int)buf[offset];
+
+    // if(sizeof(buffer)<size*20)
+    // {
+    //     osErrno = E_BUFFER_TOO_SMALL;
+    //     return -1;
+    // }
+
+    
+    int start = offset + 17 ;
+
+
+    //Size error handling
+    int index=0,last_table,last_sector,total_size;
+    char last_buf[512];
+    last_sector = 0;
+    last_table = start + (4*(size-1));
+    for(int j = 0 ; j < 4 ; j++)
+    {
+       last_sector = last_sector * 10 + buf[last_table+j] ;
+    }
+    Disk_Read(last_sector,last_buf) ;
+
+    total_size = ((size-1)*100*21) + (21 * last_buf[1]);
+    if(total_size>sz)
+    {
+        printf("Buffer too small\n");
+        osErrno = E_BUFFER_TOO_SMALL;
+        return -1;
+    }
+
+    
+    for(int i = start,count = 0 ;count < size ;i+=4,count++)
+    {
+
+        int z,inode_sect=0, inode_frag;
+        int sector = 0 ,fragment;
+        for(int j = 0 ; j < 4 ; j++)
+        {
+           sector = sector * 10 + buf[i+j] ;
+        }
+        Disk_Read(sector,newbuf) ;
+
+        int m = 2;
+        for(int l = 0; l<newbuf[1];l++)
+        {
+                
+            for (z=0;z<4;z++)
+            {
+                inode_sect = inode_sect*10+newbuf[m++];
+            }
+            inode_frag = newbuf[m++];
+            
+            Disk_Read(inode_sect,read_buffer);
+
+            int off = (141 * (inode_frag)) + 2  ;
+
+            char name[16];
+
+            for(int k=2;k<=17;k++)
+            {
+                buffer[index++]=read_buffer[off+k];
+            }
+
+            for(int k=3 ;k>=0;k--)
+            {
+                buffer[index+k]=inode_sect%10 + '0';
+                inode_sect = inode_sect/10;
+            }
+            index = index+4;
+            buffer[index++]=inode_frag +'0';
+        }
+
+        for(index;index<sz;index++)
+        {
+            buffer[index]= '\0';
+        }
+    }    
+    
+    return total_size;
 }
 
 int
