@@ -240,16 +240,52 @@ FS_Boot(char *path)
             return -1 ;
        }
        init_bitmaps();
-       Dir_Create("/") ;
-       printf("1----------------------------Disk Created\n");
-       File_Create("abc.txt");
-       printf("File created\n");
-       File_Open("/abc.txt");
-       printf("File opened\n");
+       Dir_Create("/");
+       Dir_Create("/a");
+       Dir_Create("/a/b");
+       Dir_Create("/a/b/c");
+       File_Create("/a/b/c/abc.txt");
+       File_Open("/a/b/c/abc.txt");
 
+       //Todo - Delete this
+       char buf[SECTOR_SIZE];
+        Disk_Read(4, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(7, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(8, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(9, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(10, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(11, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(12, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
 
-
-       if(FS_Sync() == -1)
+        if(FS_Sync() == -1)
             return -1 ;
     }
 
@@ -265,7 +301,7 @@ FS_Boot(char *path)
             return -1 ;
         }
         //Checks if the first sector contains the magic number. If no, the disk is corrupted.
-        if(strcmp(buf,MAGIC_NUMBER)==0)
+        if(strcmp(buf, MAGIC_NUMBER) == 0)
             printf("Success\n");
         else{
             printf("Disk Corrupted\n");
@@ -281,14 +317,54 @@ FS_Boot(char *path)
 }
 
 int
-File_Create(char *file)
+File_Create(char *path)
 {
     printf("FS_Create\n");
     /*    create a new inode
         Mode bit 0 - file
         Mode bit 1 - directory */
     int sector_number = find_sector(0);
-    make_inode(sector_number, 0, file);
+    char file_name[16];
+    int inode = root_inode, fragment = root_fragment;
+    int status = open_dir(path, &inode, &fragment, file_name);
+    get_name(path,file_name);
+    if(status == -1){
+        printf("File Create: Something Wrong in Path\n");
+    }
+    //check if file already exists.
+    char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE];
+    Disk_Read(inode, buf) ;
+
+    int tab ;
+    int count;
+    int offset = (141 * (fragment)) + 2  ;
+
+    int start = offset + 17 ;
+    int size = (int)buf[offset] ;
+
+    for(int i = start, count = 0 ; count < size ; i += 4){
+        tab = 0 ;
+        for(int j = 0 ; j < 4 ; j++){
+            tab = tab * 10 + buf[i+j] ;
+        }
+
+        Disk_Read(tab, newbuf) ;
+
+        int st = checkintable(newbuf, &inode, &fragment, file_name) ;
+        if(st){
+            printf("File Create: File Already Exists.\n");
+            osErrno = E_CREATE;
+            return -1;
+        }
+        else
+            count++ ;
+    }
+    if(count >= size){
+        printf("File Create: Success, No Such File/Directory Found\n");
+    }
+    int frag = make_inode(sector_number, 0, file_name);
+
+    create_dir(path, root_inode, root_fragment, sector_number, frag);
     return 0;
 }
 
@@ -304,17 +380,17 @@ File_Open(char *path)
     strcat(new_path, "/dummy");
 
     char fname[16];
-    int *inode = &root_inode, *fragment = &root_fragment;
+    int inode = root_inode, fragment = root_fragment;
 
-    int status = open_dir(new_path, inode, fragment, fname);
+    int status = open_dir(new_path, &inode, &fragment, fname);
+
     if(status == -1){
         printf("File Open: No such File Exist\n");
         osErrno = E_NO_SUCH_FILE;
         return -1;
     }
 
-    int fd = make_open_file_table(*inode, *fragment);
-
+    int fd = make_open_file_table(inode, fragment);
     return fd;
 }
 
@@ -366,12 +442,12 @@ int check_name_exists(int sec, int frag, char *file_name)
         return 0 ;
     int offset = (141*frag) + 2 ;
 
-    for(int i = offset + 2;buf[i] != '\0' && i<offset + 18; i++)
+    for(int i = offset + 2;buf[i] != '\0' || i<offset + 17; i++)
         fname[j++] = buf[i] ;
     fname[j] = '\0' ;
-    // printf("%s\n",fname);
     if(strcmp(fname,file_name) == 0)
         return 1 ;
+    printf("0\n");
     return 0 ;
 
 }
@@ -393,9 +469,6 @@ int checkintable(char *tab, int *dir_inode, int *dir_fragment, char *fname)
             sec = sec * 10 + tab[j] ;
         frag = tab[j];
         start+=5 ;
-
-        // printf("%d,%d\n",sec,frag );
-
         if(check_name_exists(sec,frag,fname)) 
         {
             *dir_inode = sec ;
@@ -413,7 +486,7 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
     char new_path[256], file_name[16];
     int i, j = 0, flag, offset, file_inode, file_fragment;
     flag = 0;
-    for(i=1; path[i]!='\0'; i++)
+    for(i = 1; path[i]!='\0'; i++)
     {
         if(path[i] == '/')
         {
@@ -455,7 +528,6 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
            }
 
             Disk_Read(tab, newbuf) ;
-
             int st = checkintable(newbuf, dir_inode, dir_fragment,file_name) ;
             if(st)
             {
@@ -467,7 +539,6 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         }
         if(count >= size){
             printf("Open Directory: No Such File/Directory Found\n");
-            osErrno = E_NO_SUCH_FILE;
             return -1;
         }
     }
@@ -650,7 +721,7 @@ Dir_Create(char *path)
 
     create_dir(path, root_inode, root_fragment, empty_sector, file_fragment);
 
-    Disk_Read(10, buf);
+    Disk_Read(8, buf);
     int offset = (141 * file_fragment) + 2;
     for(int i = 0; i<512; i++){
         printf("%d ", buf[i]);
