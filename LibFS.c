@@ -306,9 +306,10 @@ FS_Boot(char *path)
        Dir_Create("/a");
        Dir_Create("/a/b");
        Dir_Create("/a/b/c");
+       File_Create("/a/b/c/abc.txt");
        File_Create("/a/b/c/abcd.txt");
-       File_Create("/a/ab.txt");
        File_Open("/a/b/c/abc.txt");
+       File_Open("/a/b/c/abcd.txt");
 
        //Todo - Delete this
        char buf[SECTOR_SIZE];
@@ -887,62 +888,7 @@ int Dir_Size(char *path)
 
    return siz ;
 
-    
-
  }
-
- // void getfromtable(int *inode_sector, int *inode_fragment)
- // {
- //    char temp[5] ;
- //    int frag1,sec1 ;
- //    int k1 = 0,j1 ;
-
- //    int start1 = 2 ;
-
- //    for(int i1 = 0 ; i1 < newbuf[1] ; i1++)
- //    {
- //        k1 = 0;
- //        sec1 = 0;
- //        for(j1 = start1 ; j1 < start1 + 4; j1++)
- //            se1c = sec1 * 10 + newbuf[j] ;
- //        frag1 = newbuf[j];
- //        start1+=5 ;
- //    }
- // }
- 
-
-
-
-         
-
-   //       //TODO - Change count < 1 to count < size after correction
-
-   //      for(int i = start,count = 0 ;count < 1 ;i+=4)
-   //      {
-
-   //          char temp[5] ;
-   //          tab = 0 ;
-   //          for(int j = 0 ; j < 4 ; j++)
-   //         {
-   //             tab = tab * 10 + buf[i+j] ;
-   //          }
-           
-   //         // printf("Hey val %d\n", tab);
-   //          Disk_Read(tab,newbuf) ;
-
-   //          int st = checkintable(newbuf, dir_inode, dir_fragment,file_name) ;
-   //          if(st)
-   //          {
-   //              // open_dir(new_path,dir_inode,dir_fragment,fname) ;
-   //              break ;
-   //          }
-   //          else
-   //              count++ ;
-   //     }
-
-
-//}
-
 
 int
 Dir_Read(char *path, void *buffer, int size)
