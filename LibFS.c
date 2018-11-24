@@ -97,8 +97,12 @@ make_inode (int sector_number, int mode, char *name){
             buff[1] += 1;
         }
     }
+    //Todo - change this 
     //size of the file/directory.
-    buff[offset] = 0;
+    if(mode)
+        buff[offset] = 0;
+    else
+        buff[offset] = 5;
 
     for(i = 0; i < strlen(name); i++){
         buff[offset + i + 2] = name[i];
@@ -244,7 +248,8 @@ FS_Boot(char *path)
        Dir_Create("/a");
        Dir_Create("/a/b");
        Dir_Create("/a/b/c");
-       File_Create("/a/b/c/abc.txt");
+       File_Create("/a/b/c/abcd.txt");
+       File_Create("/a/ab.txt");
        File_Open("/a/b/c/abc.txt");
 
        //Todo - Delete this
@@ -736,7 +741,6 @@ Dir_Create(char *path)
 
 int get_Size(int inode_sector,int inode_fragment)
  {
-    printf("get_Size\n");
     int count_size=0;
 
     char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE] ;
@@ -820,8 +824,6 @@ int Dir_Size(char *path)
 
 
    int siz = get_Size(dir_inode,dir_sector) ;
-
-   printf("Printing size : %d \n", siz);
 
    return siz ;
 

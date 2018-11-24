@@ -39,6 +39,7 @@ int FS_Boot(char *path);
 int FS_Sync();
 
 // file ops
+void create_dir(char *,int,int,int,int);
 int File_Create(char *file);
 int File_Open(char *file);
 int File_Read(int fd, void *buffer, int size);
