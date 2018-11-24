@@ -71,8 +71,9 @@ make_inode (int sector_number, int mode, char *name){
             buff[1] += 1;
         }
     }
-
+    //size of the file/directory.
     buff[offset] = 0;
+
     for(i = 0; i < strlen(name); i++){
         buff[offset + i + 2] = name[i];
     }
@@ -116,17 +117,17 @@ FS_Sync()
 
 int
 init_bitmaps(){
-    char buff[512];
+    char buff[SECTOR_SIZE];
     int read_status = Disk_Read(1, buff);
     if(read_status == -1){
         printf("Init Bitmap: Error");
         return -1;
     }
-    for(int i = 0; i < 19; i++){
+    for(int i = 0; i < 1; i++){
         buff[i] = 127;
     }
 
-    Disk_Write(1,buff);
+    Disk_Write(1, buff);
 
     FS_Sync();
     return 0;
