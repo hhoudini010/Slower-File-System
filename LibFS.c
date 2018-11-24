@@ -303,13 +303,13 @@ File_Unlink(char *file)
     return 0;
 }
 
-void 
-file_search(char* file_name, int dir_inode, int dir_fragment, int &file_inode, int &file_fragment)
-{   
+// void 
+// file_search(char* file_name, int dir_inode, int dir_fragment, int &file_inode, int &file_fragment)
+// {   
     
 
 
-}
+// }
 
 
 void
@@ -341,10 +341,12 @@ open_dir(char *path,int dir_inode, int dir_fragment, char* fname)
     }
     else
     {
-        if(file_search(file_name,dir_inode,dir_fragment,file_inode,file_fragment))
-        {
-            open_dir(new_path,file_inode,file_fragment,fname);
-        }
+        // if(file_search(file_name,dir_inode,dir_fragment,file_inode,file_fragment))
+        // {
+        //     open_dir(new_path,file_inode,file_fragment,fname);
+        // }
+
+        
     }
 
 }
