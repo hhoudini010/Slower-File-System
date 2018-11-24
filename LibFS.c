@@ -285,7 +285,9 @@ FS_Boot(char *path)
         }
         printf("\n\n");
 
-        if(FS_Sync() == -1)
+       int siz = Dir_Size("/") ;
+
+       if(FS_Sync() == -1)
             return -1 ;
     }
 
@@ -731,6 +733,153 @@ Dir_Create(char *path)
     return 0;
 
 }
+
+int get_Size(int inode_sector,int inode_fragment)
+ {
+    printf("get_Size\n");
+    int count_size=0;
+
+    char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE] ;
+         Disk_Read(inode_sector,buf) ;
+
+    int offset = (141 * (inode_fragment)) + 2  ;
+
+    int size=(int)buf[offset];
+
+    char type=buf[offset+1];
+
+    if(type=='f')
+        return (size)*512 ;
+
+    if(size==0)
+        return 0;
+
+    int start = offset + 17 ;
+    if(type=='d')
+    {
+
+          for(int i = start,count = 0 ;count < size ;i+=4)
+         {
+
+            int tab = 0 ;
+            for(int j = 0 ; j < 4 ; j++)
+           {
+               tab = tab * 10 + buf[i+j] ;
+            }
+           
+           // printf("Hey val %d\n", tab);
+            Disk_Read(tab,newbuf) ;
+
+            //getfromtable(newbuf,&inode_sector,&inode_fragment) ;
+
+
+
+
+        int frag1,sec1 ;
+        int k1 = 0,j1 ;
+
+        int start1 = 2 ;
+
+        for(int i1 = 0 ; i1 < newbuf[1] ; i1++)
+        {
+            k1 = 0;
+            sec1 = 0;
+            for(j1 = start1 ; j1 < start1 + 4; j1++)
+                sec1 = sec1 * 10 + newbuf[j1] ;
+            frag1 = newbuf[j1];
+            start1+=5 ;
+             count_size+= get_Size(sec1,frag1) ;
+
+        }
+           
+            count++ ;
+       }
+    }
+
+    return count_size ;
+ }   
+
+int Dir_Size(char *path) 
+{
+    char new_path[280];
+   printf("Dir_Size %s\n", path); 
+
+   char file_name[16];
+
+   int dir_inode=root_inode;
+
+   int dir_sector=root_fragment;
+
+   strcpy(new_path,path);
+   strcat(new_path,"/dummy");
+   printf("%s\n",path);
+
+   open_dir(new_path,&dir_inode,&dir_sector,file_name);
+
+   printf("dir inode = %d,%d\n",dir_inode,dir_sector);
+
+
+   int siz = get_Size(dir_inode,dir_sector) ;
+
+   printf("Printing size : %d \n", siz);
+
+   return siz ;
+
+    
+
+ }
+
+ // void getfromtable(int *inode_sector, int *inode_fragment)
+ // {
+ //    char temp[5] ;
+ //    int frag1,sec1 ;
+ //    int k1 = 0,j1 ;
+
+ //    int start1 = 2 ;
+
+ //    for(int i1 = 0 ; i1 < newbuf[1] ; i1++)
+ //    {
+ //        k1 = 0;
+ //        sec1 = 0;
+ //        for(j1 = start1 ; j1 < start1 + 4; j1++)
+ //            se1c = sec1 * 10 + newbuf[j] ;
+ //        frag1 = newbuf[j];
+ //        start1+=5 ;
+ //    }
+ // }
+ 
+
+
+
+         
+
+   //       //TODO - Change count < 1 to count < size after correction
+
+   //      for(int i = start,count = 0 ;count < 1 ;i+=4)
+   //      {
+
+   //          char temp[5] ;
+   //          tab = 0 ;
+   //          for(int j = 0 ; j < 4 ; j++)
+   //         {
+   //             tab = tab * 10 + buf[i+j] ;
+   //          }
+           
+   //         // printf("Hey val %d\n", tab);
+   //          Disk_Read(tab,newbuf) ;
+
+   //          int st = checkintable(newbuf, dir_inode, dir_fragment,file_name) ;
+   //          if(st)
+   //          {
+   //              // open_dir(new_path,dir_inode,dir_fragment,fname) ;
+   //              break ;
+   //          }
+   //          else
+   //              count++ ;
+   //     }
+
+
+//}
 
 
 int

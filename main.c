@@ -21,6 +21,8 @@ main(int argc, char *argv[])
     FS_Boot(path);
     FS_Sync();
 
+    Dir_Size("/ab/bc");
+
 
     return 0;
 }
