@@ -15,7 +15,8 @@
 // used for errors
 extern int osErrno;
 char * disk_path;
-int root_inode,root_fragment;
+int root_inode, root_fragment;
+int next_free_fd;
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {
@@ -47,6 +48,7 @@ int File_Close(int fd);
 int File_Unlink(char *file);
 
 // directory ops
+int open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname);
 int Dir_Create(char *path);
 int Dir_Size(char *path);
 int Dir_Read(char *path, void *buffer, int size);
