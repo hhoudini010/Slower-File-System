@@ -9,5 +9,5 @@ dummyProject: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 clean:
-	rm -f $(OBJ)
+	rm -f $(OBJ) disk_file
 

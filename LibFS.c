@@ -17,7 +17,7 @@ void zero_init(){
     }
 }
 
-int 
+int
 get_name(char *path,char *fname)
 {
     int i,j ;
@@ -27,7 +27,7 @@ get_name(char *path,char *fname)
         if(path[i] == '/')
             break ;
     }
-    
+
     for(i+=1,j=0; i < strlen(path); i++)
     {
         fname[j++] = path[i] ;
@@ -48,7 +48,8 @@ int checkvalid(char *fname)
         if(!((fname[i] >= 'a' && fname[i] <= 'z') || (fname[i] >= '0' && fname[i] <= '9') || fname[i] == '.' || fname[i] == '-' || fname[i] == '_'|| fname[i] == '/'))
             return 0 ;
     return 1 ;
-}   
+}
+
 
 
 //TODO - error handling
@@ -72,7 +73,7 @@ make_inode (int sector_number, int mode, char *name){
     }
 
     buff[offset] = 0;
-    for(i = 0; i < 16; i++){
+    for(i = 0; i < strlen(name); i++){
         buff[offset + i + 2] = name[i];
     }
     buff[offset + i + 2] = '\0';
@@ -95,7 +96,7 @@ make_inode (int sector_number, int mode, char *name){
         Disk_Write(bitmap_sector, bitmap_buffer);
         FS_Sync();
     }
-    return 0;
+    return buff[1]-1;
 }
 
 int
@@ -135,10 +136,11 @@ init_bitmaps(){
 //search for empty sector
 
 int
-find_sector(){
+find_sector(int min_sector){
 
     int empty_sector = 0,flag;
     flag = 0;
+    min_sector++;
     for (int i = 1; i <= 3; ++i)
     {
         char buf[SECTOR_SIZE] ;
@@ -149,7 +151,7 @@ find_sector(){
             int bit_sector = (int)buf[j] ;
             for(int k = 0 ; k < 7 ; k++)
             {
-                if(bit_sector % 2 == 0)
+                if(bit_sector % 2 == 0 && empty_sector>=min_sector)
                 {
                     flag = 1;
                     break;
@@ -211,9 +213,12 @@ FS_Boot(char *path)
             return -1 ;
        }
        init_bitmaps();
-       Dir_Create("/abc") ;
+       Dir_Create("/") ;
+       Dir_Create("/ab") ;
+       Dir_Create("/def") ;
+       Dir_Create("/xyz") ;
 
-       if(FS_Sync() == -1) 
+       if(FS_Sync() == -1)
             return -1 ;
     }
 
@@ -251,7 +256,7 @@ File_Create(char *file)
     /*    create a new inode
         Mode bit 0 - file
         Mode bit 1 - directory */
-    int sector_number = find_sector();
+    int sector_number = find_sector(0);
     make_inode(sector_number, 0, file);
     return 0;
 }
@@ -298,39 +303,234 @@ File_Unlink(char *file)
     return 0;
 }
 
+void 
+file_search(char* file_name, int dir_inode, int dir_fragment, int &file_inode, int &file_fragment)
+{   
+    
+
+
+}
+
+
+void
+open_dir(char *path,int dir_inode, int dir_fragment, char* fname)
+{
+    char new_path[256],file_name[16];
+    int i,flag,offset,file_inode,file_fragment;
+    flag = 0;
+    for(i=1;path[i]!='\0';i++)
+    {
+        if(path[i] == '/')
+        {
+            file_name[i-1] = '\0';
+            flag = 1;
+        }
+        if(flag)
+            new_path[i]=path[i];
+        if(!flag)
+        {
+            file_name[i-1] = path[i];
+        }
+    }
+    new_path[i] = '\0';
+    if(!flag)
+    {
+        file_name[i] = '\0';
+        strcpy(fname,file_name);
+        return;
+    }
+    else
+    {
+        if(file_search(file_name,dir_inode,dir_fragment,file_inode,file_fragment))
+        {
+            open_dir(new_path,file_inode,file_fragment,fname);
+        }
+    }
+
+}
+
+
+//store location of inode in file table of parent
+void
+create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fragment)
+{
+    printf("Change_dir\n");
+    char file_name[16];
+    int i,flag,offset;
+    flag = 0;
+    open_dir(path,dir_inode,dir_sector,file_name);
+    if(!flag)
+    {
+        //file_name to be created
+        int empty_sector,sector_select;
+        char buff[SECTOR_SIZE],buffer[SECTOR_SIZE];
+        Disk_Read(dir_inode, buff);
+        offset = (141 * dir_sector) + 2;
+        if(buff[offset] == 0)
+        {
+            printf("Empty directory\n");
+
+            do
+            {
+                empty_sector = find_sector(empty_sector);
+                printf("Sector = %d\n",empty_sector);
+                Disk_Read(empty_sector, buffer);
+
+            }while(buffer[0] == 'i');
+            sector_select = empty_sector;
+
+            buffer[0] = 'd';
+            buffer[1] = 1;
+            for(i=3;i>=0;i--)
+            {
+                buffer[i+2] = file_inode%10;
+                file_inode = file_inode/10;
+            }
+            buffer[6] = file_fragment;
+
+            buff[offset]++;
+
+            for(i=3;i>=0;i--)
+            {
+                buff[offset+i+17] = sector_select%10;
+                sector_select /= 10;
+            }
+
+            Disk_Write(empty_sector,buffer);
+            Disk_Write(dir_inode,buff);
+            FS_Sync();
+
+
+            int bitmap_sector = (empty_sector/(SECTOR_SIZE * 7)) + 1;
+            int sector_index = (empty_sector / 7);
+            int sector_offset = (empty_sector % 7);
+            char bitmap_buffer[SECTOR_SIZE];
+            Disk_Read(bitmap_sector, bitmap_buffer);
+            int val = bitmap_buffer[sector_index];
+            int new_val = val + pow(2, sector_offset);
+            bitmap_buffer[sector_index] = new_val;
+            Disk_Write(bitmap_sector, bitmap_buffer);
+            FS_Sync();
+        }
+        else
+        {
+            printf("Non-Empty directory\n");
+
+            sector_select = buff[offset] ;
+            int internal_offset,sector_num=0;
+
+            internal_offset = offset + 17 + ((sector_select-1)*4);
+
+            for(i=0;i<4;i++)
+            {
+                sector_num =sector_num*10 + buff[internal_offset+i];
+            }
+            Disk_Read(sector_num, buffer);
+            if(buffer[1]<100)
+            {
+                internal_offset = (5*buffer[1]);
+                for(i=3;i>=0;i--)
+                {
+                    buffer[internal_offset + i + 2] = file_inode%10;
+                    file_inode = file_inode/10;
+                }
+                buffer[internal_offset + 6] = file_fragment;
+
+                buffer[1]++;
+                
+                Disk_Write(sector_num,buffer);
+                Disk_Write(dir_inode,buff);
+                FS_Sync();
+            }
+            else
+            {
+                do
+                {
+                    empty_sector = find_sector(empty_sector);
+                    printf("Sector = %d\n",empty_sector);
+                    Disk_Read(empty_sector, buffer);
+
+                }while(buffer[0] == 'i');
+                sector_select = empty_sector;
+
+                buffer[0] = 'd';
+                buffer[1] = 1;
+                for(i=3;i>=0;i--)
+                {
+                    buffer[i+2] = file_inode%10;
+                    file_inode = file_inode/10;
+                }
+                buffer[6] = file_fragment;
+
+                internal_offset = 17 + (4*buff[offset]);
+                for(i=3;i>=0;i--)
+                {
+                    buff[offset+i+internal_offset] = sector_select%10;
+                    sector_select /= 10;
+                }
+
+                buff[offset]++;
+                Disk_Write(empty_sector,buffer);
+                Disk_Write(dir_inode,buff);
+                FS_Sync();
+
+            }
+
+        }
+
+    }
+    else
+    {
+        // open the file
+
+    }
+}
+
+
 
 // directory ops
 int
 Dir_Create(char *path)
 {
-
-    char buf[SECTOR_SIZE] ;
-    int empty_sector;
     printf("Dir_Create %s\n", path);
 
-    empty_sector = find_sector();
+    char buf[SECTOR_SIZE] ;
     char fname[16];
+    int empty_sector,file_sector,file_fragment;
+
+    empty_sector = find_sector(0);
 
     //Incase of root directory
     if(strcmp(path,"/")==0)
     {
-        make_inode(empty_sector,1,path);
+        root_inode = empty_sector;
+        root_fragment = make_inode(empty_sector,1,path);
         return 0;
     }
-    
+
     if(get_name(path,fname) == 0)
     {
         printf("Directory name\n");
         return 0;
     }
     printf("File Name = %s\n",fname );
-    int st = checkvalid(fname) ;
 
-    if(st)
-        printf("valid\n");
-    else
-        printf("invalid\n");
-    make_inode(empty_sector, 1, fname);
+    if(!checkvalid(fname))
+    {
+        printf("Invalid file name\n");
+        return 0;
+    }
+
+    file_fragment = make_inode(empty_sector, 1, fname);
+
+    create_dir(path,root_inode,root_fragment,empty_sector,file_fragment);
+
+    Disk_Read(134,buf);
+    int offset = (141 * file_fragment) + 2;
+    for(int i = 0; i<512; i++){
+        printf("%d ",buf[i]);
+    }
+    printf("\n");
 
     return 0;
 
