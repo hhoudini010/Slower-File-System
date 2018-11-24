@@ -153,10 +153,9 @@ init_bitmaps(){
         printf("Init Bitmap: Error");
         return -1;
     }
-    for(int i = 0; i < 1; i++){
-        buff[i] = 127;
-    }
 
+    buff[0] = 127;
+    buff[1] = 1;
     Disk_Write(1, buff);
 
     FS_Sync();
