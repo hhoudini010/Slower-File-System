@@ -6,7 +6,7 @@ int osErrno;
 
 int Dir_Create(char *) ;
 
-char* get_name(char *path)
+void get_name(char *path,char *fname)
 {
     int i,j ;
 
@@ -15,7 +15,7 @@ char* get_name(char *path)
         if(path[i] == '/')
             break ;
     }
-    char fname[16] ;
+    // char fname[16] ;
 
     for(i,j=0; i < strlen(path); i++)
     {
@@ -23,8 +23,7 @@ char* get_name(char *path)
     }
 
     fname[j]='\0' ;
-    printf("%s\n",fname );
-    return fname ;
+    
 }
 
 int checkvalid(char *fname)
@@ -241,22 +240,23 @@ Dir_Create(char *path)
     printf("Dir_Create %s\n", path);
     
     empty_sector = find_sector();
-    char *fname;
-    fname = (char*)malloc(16);
-    printf("%d\n",sizeof(fname) );
+    char fname[16];
+    get_name(path,fname);
+    // fname = (char*)malloc(16);
+    // printf("%ld\n",sizeof(get_name(path)) );
 
     // strcpy(fname,get_name(path)) ;
     // fname = get_name(path);
-    // printf("%s\n",fname );
-    // int st = checkvalid(fname) ;
+    printf("File Name = %s\n",fname );
+    int st = checkvalid(fname) ;
 
-    // if(st)
-    //     // cout<<"valid"<<endl ;
-    //     printf("valid\n");
-    // else
-    //     // cout<<"Invalid"<<endl ;
-    //     printf("invalid\n");
-    // return 0;
+    if(st)
+        // cout<<"valid"<<endl ;
+        printf("valid\n");
+    else
+        // cout<<"Invalid"<<endl ;
+        printf("invalid\n");
+    return 0;
 }
 
 
