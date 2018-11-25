@@ -306,9 +306,45 @@ FS_Boot(char *path)
             printf("Write failed.\n");
             osErrno = E_GENERAL ;
             return -1 ;
+<<<<<<< HEAD
         }
         init_bitmaps();
         Dir_Create("/");
+=======
+       }
+       init_bitmaps();
+
+       printf("After.........................................................................\n");
+       Dir_Create("/");
+       Dir_Create("/a");
+       Dir_Create("/b");
+       Dir_Create("/e");
+       Dir_Create("/e/f");
+       // Dir_Create("/a/b");
+       // Dir_Create("/a/b/c");
+       // File_Create("/a/b/c/abc.txt");
+       // File_Create("/a/b/c/abcd.txt");
+       // int x = File_Open("/a/b/c/abc.txt");
+       // File_Open("/a/b/c/abcd.txt");
+       // File_Open("/a/b/c/raj.txt");
+       
+       // File_Close(x);
+
+
+        Dir_Unlink("/a");
+
+        printf("After.........................\n");
+
+
+        char buf[SECTOR_SIZE] ;
+
+
+    Disk_Read(8, buf);
+    for(int i = 0; i<512; i++){
+        printf("%d ", buf[i]);
+    }
+    printf("\n");
+>>>>>>> Inode correction done
 
 
 
@@ -1530,7 +1566,54 @@ Dir_Unlink(char *path)
 
     if(bufs[1] == '\0')
         bufs[0] = '\0' ;
+
     Disk_Write(cinode,bufs) ;
+
+    //Inode correction.
+
+    int cfrag = cfragment ;
+    int offset1, offset2 ;
+
+    if(cfrag == 0 && bufs[1] != '\0')
+    {
+        offset1 = (141 * cfrag) + 2  ;
+        cfrag++;
+        offset2 = (141 * cfrag) + 2  ;
+
+
+        for(int j = 0 ; j < 2; j++)
+        {
+            for(int i = 0 ; i < 141; i++)
+                bufs[offset1+i] = bufs[offset2+i] ;
+            offset1 = offset2 ;
+            cfrag++ ;
+            offset2 = (141 * cfrag) + 2  ;
+
+        }   
+
+        for(int i = offset1 ; i < offset1 + 141; i++)
+            bufs[i] = '\0' ;
+
+
+    }
+
+    else if(cfrag == 1 && bufs[1] != '\0')
+    {
+
+         offset1 = (141 * cfrag) + 2  ;
+        cfrag++;
+        offset2 = (141 * cfrag) + 2  ;
+
+            for(int i = 0 ; i < 141; i++)
+                bufs[offset1+i] = bufs[offset2+i] ;
+
+             for(int i = offset2 ; i < offset2 + 141; i++)
+            bufs[i] = '\0' ;
+
+    }
+
+     Disk_Write(cinode,bufs) ;
+
     FS_Sync() ;
 
     int st = search_in_pointer(pinode,pfragment,cinode,cfragment) ;
