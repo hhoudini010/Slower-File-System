@@ -316,15 +316,6 @@ FS_Boot(char *path)
        Dir_Create("/b");
        Dir_Create("/a/b");
 
-       // Dir_Create("/a/b/c");
-       // File_Create("/a/b/c/abc.txt");
-       // File_Create("/a/b/c/abcd.txt");
-       // int x = File_Open("/a/b/c/abc.txt");
-       // File_Open("/a/b/c/abcd.txt");
-       // File_Close(x);
-
-
-
        //Todo - Delete this
        char buf[SECTOR_SIZE];
         Disk_Read(4, buf);
