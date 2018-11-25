@@ -320,6 +320,7 @@ FS_Boot(char *path)
 
 
 
+
        if(FS_Sync() == -1)
             return -1 ;
 
