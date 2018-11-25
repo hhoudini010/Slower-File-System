@@ -306,47 +306,9 @@ FS_Boot(char *path)
             printf("Write failed.\n");
             osErrno = E_GENERAL ;
             return -1 ;
-<<<<<<< HEAD
         }
         init_bitmaps();
         Dir_Create("/");
-=======
-       }
-       init_bitmaps();
-
-       printf("After.........................................................................\n");
-       Dir_Create("/");
-       Dir_Create("/a");
-       Dir_Create("/b");
-       Dir_Create("/e");
-       Dir_Create("/e/f");
-       // Dir_Create("/a/b");
-       // Dir_Create("/a/b/c");
-       // File_Create("/a/b/c/abc.txt");
-       // File_Create("/a/b/c/abcd.txt");
-       // int x = File_Open("/a/b/c/abc.txt");
-       // File_Open("/a/b/c/abcd.txt");
-       // File_Open("/a/b/c/raj.txt");
-       
-       // File_Close(x);
-
-
-        Dir_Unlink("/a");
-
-        printf("After.........................\n");
-
-
-        char buf[SECTOR_SIZE] ;
-
-
-    Disk_Read(8, buf);
-    for(int i = 0; i<512; i++){
-        printf("%d ", buf[i]);
-    }
-    printf("\n");
->>>>>>> Inode correction done
-
-
 
 
        if(FS_Sync() == -1)
@@ -1630,7 +1592,7 @@ Dir_Unlink(char *path)
 int is_exist(char *file)
 {
 	char buf[512], garbage[16] ;
-	char dummy[] = "dummy" ;
+	char dummy[] = "/dummy" ;
 
 	strcpy(buf,file) ;
 	strcat(buf,dummy) ;
@@ -1639,6 +1601,10 @@ int is_exist(char *file)
 	int dir_fragment = root_fragment ;
 
 	int st = open_dir(buf,&dir_inode,&dir_fragment,garbage) ;
+
+    //printf("Checking for existance . : %d\n",st );
+
+
 	if(st == -1)
 		return 0 ;
 	return 1 ;
@@ -1649,7 +1615,7 @@ int isopen(char *file)
 	char buf[512], garbage[16] ;
 	char open_ft[SECTOR_SIZE] ;
 
-	char dummy[] = "dummy" ;
+	char dummy[] = "/dummy" ;
 
 	char file_inode[4] ;
 
@@ -1660,27 +1626,34 @@ int isopen(char *file)
 	int dir_fragment = root_fragment ;
 
 	open_dir(buf,&dir_inode,&dir_fragment,garbage) ;
+
 	for(int i = 3; i >=0  ;i--)
 	{
 		file_inode[i] = dir_inode % 10 ;
 		dir_inode/=10 ;
 	}
 
-
 	for(int i = 4; i < 8; i++)
 	{
 		Disk_Read(i,open_ft) ;
+
+        for (int j = 0; j < 512; ++j)
+        {
+            printf("%d ",open_ft[j] );
+        }
+        
 		for(int j = 0 ; j < 512; j+=8)
 		{
-			if(open_ft[j] == '0')
+			if(open_ft[j] == 0)
 				continue ;
 			int count = 0 ;
 			int k,l ;
 
-			for(k = j+1, l = 0; k < j+4; k++,l++)
+			for(k = j+1, l = 0; k < j+5; k++,l++)
 			{
 				if(file_inode[l] != open_ft[k])
 					break;
+                printf("%d ",open_ft[k] );
 				++count ;
 			}
 			if(count == 4 && open_ft[k] == dir_fragment)

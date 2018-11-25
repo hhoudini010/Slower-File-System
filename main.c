@@ -21,8 +21,16 @@ main(int argc, char *argv[])
     FS_Boot(path);
     FS_Sync();
 
-    Dir_Size("/ab/bc");
+   // Dir_Size("/ab/bc");
 
+    printf("Fun from main\n");
+
+    // File_Create("/abcd.txt") ;
+    //printf("File Open = %d\n",File_Open("/abcd.txt")) ;
+
+    int st = File_Unlink("/abcd.txt") ;
+   
+    printf("%d\n", st);
 
     return 0;
 }

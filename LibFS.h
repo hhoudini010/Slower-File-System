@@ -55,6 +55,7 @@ int Dir_Create(char *path);
 int Dir_Size(char *path);
 int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
+int isopen(char *file) ;
 
 #endif /* __LibFS_h__ */
 
