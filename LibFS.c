@@ -163,7 +163,6 @@ make_inode (int sector_number, int mode, char *name){
             buff[1] += 1;
         }
     }
-
     buff[offset] = 0;
 
     for(i = 0; i < strlen(name); i++){
@@ -573,8 +572,9 @@ File_Write(int fd, void *buffer, int size)
 int
 get_file_size(int fd){
 
-    int i, j, table_sector, table_offset, inode, fragment, inode_offset, file_size;
-    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE];
+    int i, j, table_sector, table_offset, inode = 0, fragment, inode_offset, file_size, direct_pointers;
+    int last_pointer_offset, last_file_sector = 0;
+    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE], file_buff[SECTOR_SIZE];
 
     if(fd < 64){
         table_sector = 4;
@@ -611,7 +611,19 @@ get_file_size(int fd){
 
     Disk_Read(inode, new_buff);
     inode_offset = (141 * fragment) + 2;
-    file_size = new_buff[inode_offset];
+    direct_pointers = new_buff[inode_offset];
+    file_size = 512 * (direct_pointers - 1);
+    last_pointer_offset = 19 + ((direct_pointers - 1)*4);
+    for(i = 0, j = 3; i < 4; i++, j--){
+        if((last_pointer_offset + i) != 0)
+            last_file_sector += (last_pointer_offset + i) * pow(10, j);
+    }
+    Disk_Read(last_file_sector, file_buff);
+    for(i = 0; i < 512; i++){
+        if(file_buff[i] == '\0')
+            break;
+        file_size += 1;
+    }
     return file_size;
 }
 
@@ -821,6 +833,7 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         }
         if(count >= size){
             printf("Open Directory: No Such File/Directory Found\n");
+            osErrno = E_NO_SUCH_FILE;
             return -1;
         }
     }
