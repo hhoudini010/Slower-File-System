@@ -311,7 +311,8 @@ FS_Boot(char *path)
         Dir_Create("/");
 
 
-        if(FS_Sync() == -1)
+
+       if(FS_Sync() == -1)
             return -1 ;
 
     }
