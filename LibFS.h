@@ -56,6 +56,7 @@ int Dir_Size(char *path);
 int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
 int isopen(char *file) ;
+void change_bitmap(int sector_number, int flag) ;
 
 #endif /* __LibFS_h__ */
 
