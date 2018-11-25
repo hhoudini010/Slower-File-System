@@ -322,6 +322,7 @@ FS_Boot(char *path)
        int x = File_Open("/a/b/c/abc.txt");
        File_Open("/a/b/c/abcd.txt");
        File_Close(x);
+       File_Seek(x, 20);
 
 
        //Todo - Delete this
@@ -499,9 +500,100 @@ File_Write(int fd, void *buffer, int size)
 }
 
 int
+get_file_size(int fd){
+
+    int i, j, table_sector, table_offset, inode, fragment, inode_offset, file_size;
+    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        table_offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        table_offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        table_offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        table_offset = (fd*8) - 192;
+    }
+
+    Disk_Read(table_sector, buff);
+
+    if(buff[table_offset] == 0){
+        printf("Get File Size: File Not Open\n");
+        osErrno = E_BAD_FD;
+        return -2;
+    }
+
+    for(i = 1, j = 3; i <= 4; i++, j--){
+        if(buff[table_offset + i] != 0){
+            inode += buff[table_offset + i] * pow(10, j);
+        }
+    }
+
+    fragment = buff[table_offset + 5];
+
+    Disk_Read(inode, new_buff);
+    inode_offset = (141 * fragment) + 2;
+    file_size = new_buff[inode_offset];
+    return file_size;
+}
+
+int
 File_Seek(int fd, int offset)
 {
-    printf("FS_Seek\n");
+    if(offset < 0){
+        printf("File Seek: Negative Offset.\n");
+        osErrno = E_SEEK_OUT_OF_BOUNDS;
+        return -1;
+    }
+    else if(get_file_size(fd) == -2){
+        printf("File Seek: File Not Open.\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+    else if(get_file_size(fd) < offset){
+        printf("File Seek: Seek Out of Bound.\n");
+        osErrno = E_SEEK_OUT_OF_BOUNDS;
+        return -1;
+    }
+
+    int i, table_sector, table_offset, least_bit, most_bit;
+    char buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        table_offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        table_offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        table_offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        table_offset = (fd*8) - 192;
+    }
+
+    least_bit = offset % 128;
+    most_bit = offset / 128;
+
+    Disk_Read(table_sector, buff);
+
+    buff[table_offset + 6] = least_bit;
+    buff[table_offset + 7] = most_bit;
+
+    Disk_Write(table_sector, buff);
+    FS_Sync();
+
     return 0;
 }
 
@@ -540,6 +632,7 @@ File_Close(int fd)
         buff[i] = '\0';
     }
     Disk_Write(table_sector, buff);
+    FS_Sync();
 
     return 0;
 }
