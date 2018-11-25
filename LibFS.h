@@ -40,6 +40,7 @@ int FS_Boot(char *path);
 int FS_Sync();
 
 // file ops
+int get_file_size(int);
 void create_dir(char *,int,int,int,int);
 int File_Create(char *file);
 int File_Open(char *file);
@@ -57,6 +58,8 @@ int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
 int isopen(char *file) ;
 void change_bitmap(int sector_number, int flag) ;
+
+void print_bitmaps();
 
 #endif /* __LibFS_h__ */
 

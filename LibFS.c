@@ -163,7 +163,6 @@ make_inode (int sector_number, int mode, char *name){
             buff[1] += 1;
         }
     }
-
     buff[offset] = 0;
 
     for(i = 0; i < strlen(name); i++){
@@ -425,12 +424,94 @@ File_Open(char *path)
 }
 
 int
-File_Read(int fd, void *buffer, int size)
-{
-    printf("FS_Read\n");
-    return 0;
+get_current_pointer(int fd, int *inode_sector, int *inode_frag){
+
+    int i, j, table_sector, table_offset, current_position;
+    char buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        table_offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        table_offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        table_offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        table_offset = (fd*8) - 192;
+    }
+
+    Disk_Read(table_sector, buff);
+    current_position = (128 * buff[table_offset + 7]) + buff[table_offset + 6];
+    for(i = 1, j = 3; i <= 4; i++, j--){
+        if(buff[table_offset + i] != 0)
+            (*inode_sector) += buff[table_offset + i] * pow(10, j);
+    }
+    *inode_frag = buff[table_offset + 5];
+    return current_position + 1;
 }
 
+int
+File_Read(int fd, void *buffer, int size)
+{
+    int file_size, current_position, read_bytes = 0, left_to_read = size, block_number, inode_sector = 0, block_offset;
+    int i, j, inode_frag, inode_offset, current_pointer_offset, file_sector = 0;
+    char buff[SECTOR_SIZE], file[SECTOR_SIZE], temp_buffer[size];
+    int flag = 1;
+    file_size = get_file_size(fd);
+    if(file_size == -1){
+        printf("File Read: File Not Open.\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+    current_position = get_current_pointer(fd, &inode_sector, &inode_frag);
+    if(current_position == file_size){
+        printf("File Read: Pointer at EOF.");
+        return 0;
+    }
+    block_number = current_position / 511;
+    Disk_Read(inode_sector, buff);
+    inode_offset = (141 * inode_frag) + 2;
+    block_offset = 17 + (block_number*4) + inode_offset;
+
+    for(i = block_offset, j = 3; i < (block_offset + 4); i++, j--){
+        file_sector = (file_sector*10) + buff[i];
+    }
+    Disk_Read(file_sector, file);
+
+    current_pointer_offset = current_position % 511;
+    int original_pointer = current_pointer_offset;
+    while(flag){
+        while(left_to_read > read_bytes && current_pointer_offset < 512 && file_size > read_bytes + original_pointer){
+            temp_buffer[read_bytes] = file[current_pointer_offset];
+            read_bytes += 1;
+            current_pointer_offset += 1;
+        }
+        if(current_pointer_offset >= 512){
+            block_number += 1;
+            block_offset = 17 + (block_number*4) + inode_offset;
+            file_sector = 0;
+            for(i = block_offset, j = 3; i < (block_offset + 4); i++, j--){
+                file_sector = (file_sector*10) + buff[i];
+            }
+            current_pointer_offset = 1;
+            Disk_Read(file_sector, file);
+        }
+        else if(left_to_read <= read_bytes || current_pointer_offset >= 512 || file_size <= read_bytes + original_pointer){
+            flag = 0;
+        }
+    }
+    buffer = &temp_buffer;
+    return read_bytes;
+}
+
+
+//Todo - check 4B or 5B in multiple sector case
 int
 File_Write(int fd, void *buffer, int size)
 {
@@ -565,16 +646,18 @@ File_Write(int fd, void *buffer, int size)
         sector_pointer = 0;
     }
 
+    file_size = get_file_size(fd);
+    File_Seek(fd, file_size-1);
 
-
-    return 0;
+    return size;
 }
 
 int
 get_file_size(int fd){
 
-    int i, j, table_sector, table_offset, inode, fragment, inode_offset, file_size;
-    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE];
+    int i, j, table_sector, table_offset, inode = 0, fragment, inode_offset, file_size, direct_pointers;
+    int last_pointer_offset, last_file_sector = 0;
+    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE], file_buff[SECTOR_SIZE];
 
     if(fd < 64){
         table_sector = 4;
@@ -598,7 +681,7 @@ get_file_size(int fd){
     if(buff[table_offset] == 0){
         printf("Get File Size: File Not Open\n");
         osErrno = E_BAD_FD;
-        return -2;
+        return -1;
     }
 
     for(i = 1, j = 3; i <= 4; i++, j--){
@@ -611,7 +694,20 @@ get_file_size(int fd){
 
     Disk_Read(inode, new_buff);
     inode_offset = (141 * fragment) + 2;
-    file_size = new_buff[inode_offset];
+    direct_pointers = new_buff[inode_offset];
+    file_size = 511 * (direct_pointers - 1);
+    last_pointer_offset = 17 + ((direct_pointers - 1)*4) + inode_offset;
+    for(i = 0, j = 3; i < 4; i++, j--){
+        if(new_buff[last_pointer_offset + i] != 0)
+            last_file_sector += new_buff[last_pointer_offset + i] * pow(10, j);
+    }
+    Disk_Read(last_file_sector, file_buff);
+    for(i = 0; i < 512; i++){
+        if(file_buff[i] == '\0')
+            break;
+        file_size += 1;
+    }
+
     return file_size;
 }
 
@@ -624,7 +720,7 @@ File_Seek(int fd, int offset)
         osErrno = E_SEEK_OUT_OF_BOUNDS;
         return -1;
     }
-    else if(get_file_size(fd) == -2){
+    else if(get_file_size(fd) == -1){
         printf("File Seek: File Not Open.\n");
         osErrno = E_BAD_FD;
         return -1;
@@ -821,6 +917,7 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         }
         if(count >= size){
             printf("Open Directory: No Such File/Directory Found\n");
+            osErrno = E_NO_SUCH_FILE;
             return -1;
         }
     }
@@ -1636,11 +1733,6 @@ int isopen(char *file)
 	for(int i = 4; i < 8; i++)
 	{
 		Disk_Read(i,open_ft) ;
-
-        for (int j = 0; j < 512; ++j)
-        {
-            printf("%d ",open_ft[j] );
-        }
         
 		for(int j = 0 ; j < 512; j+=8)
 		{
@@ -1688,5 +1780,40 @@ File_Unlink(char *file)
     is_a_file = 0 ;
 
     return 0;
+}
+
+void
+print_bitmaps(){
+    char buff[SECTOR_SIZE];
+    Disk_Read(4, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%d ", buff[i]);
+    }
+    printf("\n\n");
+    Disk_Read(8, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%d ", buff[i]);
+    }
+    printf("\n\n");
+    Disk_Read(9, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%d ", buff[i]);
+    }
+    printf("\n\n");
+    Disk_Read(10, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%d ", buff[i]);
+    }
+    printf("\n\n");
+    Disk_Read(11, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%c ", buff[i]);
+    }
+    printf("\n\n");
+    Disk_Read(12, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%c ", buff[i]);
+    }
+    printf("\n");
 }
 
