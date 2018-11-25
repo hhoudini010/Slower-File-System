@@ -40,6 +40,7 @@ int FS_Boot(char *path);
 int FS_Sync();
 
 // file ops
+int get_file_size(int);
 void create_dir(char *,int,int,int,int);
 int File_Create(char *file);
 int File_Open(char *file);

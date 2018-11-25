@@ -424,10 +424,88 @@ File_Open(char *path)
 }
 
 int
+get_current_pointer(int fd, int *inode_sector, int *inode_frag){
+
+    int i, j, table_sector, table_offset, current_position;
+    char buff[SECTOR_SIZE];
+
+    if(fd < 64){
+        table_sector = 4;
+        table_offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        table_offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        table_offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        table_offset = (fd*8) - 192;
+    }
+
+    Disk_Read(table_sector, buff);
+    current_position = (128 * buff[table_offset + 7]) + buff[table_offset + 6];
+    for(i = 1, j = 3; i <= 4; i++, j--){
+        if(buff[table_offset + i] != 0)
+            (*inode_sector) += buff[table_offset + i] * pow(10, j);
+    }
+    *inode_frag = buff[table_offset + 5];
+    printf("Current Position: %d\n", current_position);
+    return current_position;
+}
+
+int
 File_Read(int fd, void *buffer, int size)
 {
-    printf("FS_Read\n");
-    return 0;
+    int file_size, current_position, read_bytes = 0, left_to_read = size, block_number, inode_sector = 0, block_offset;
+    int i, j, inode_frag, inode_offset, current_pointer_offset, file_sector = 0;
+    char buff[SECTOR_SIZE], file[SECTOR_SIZE], temp_buffer[size];
+    int flag = 1;
+    file_size = get_file_size(fd);
+    if(file_size == -1){
+        printf("File Read: File Not Open.\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+    current_position = get_current_pointer(fd, &inode_sector, &inode_frag);
+    if(current_position == file_size){
+        printf("File Read: Pointer at EOF.");
+        return 0;
+    }
+    block_number = current_position / 511;
+    Disk_Read(inode_sector, buff);
+    inode_offset = (141 * inode_frag) + 2;
+    block_offset = 19 + (block_number*4);
+    for(i = block_offset, j = 3; i < (block_offset + 4); i++, j--){
+        if(buff[inode_offset + block_offset] != 0)
+            file_sector += buff[inode_offset + block_offset] * pow(10, j);
+    }
+    Disk_Read(file_sector, file);
+    current_pointer_offset = current_position % 511;
+    while(flag){
+        while(left_to_read > read_bytes && current_pointer_offset < 512){
+            temp_buffer[read_bytes] = file[current_pointer_offset];
+            read_bytes += 1;
+            current_pointer_offset += 1;
+        }
+        if(current_pointer_offset >= 512){
+            block_offset = 23 + (block_number*4);
+            for(i = block_offset, j = 3; i < (block_offset + 4); i++, j--){
+                if(buff[inode_offset + block_offset] != 0)
+                    file_sector += buff[inode_offset + block_offset] * pow(10, j);
+            }
+            current_pointer_offset = 1;
+            Disk_Read(file_sector, file);
+        }
+        else if(left_to_read <= read_bytes){
+            flag = 0;
+        }
+    }
+
+    return read_bytes;
 }
 
 int
@@ -598,7 +676,7 @@ get_file_size(int fd){
     if(buff[table_offset] == 0){
         printf("Get File Size: File Not Open\n");
         osErrno = E_BAD_FD;
-        return -2;
+        return -1;
     }
 
     for(i = 1, j = 3; i <= 4; i++, j--){
@@ -612,7 +690,7 @@ get_file_size(int fd){
     Disk_Read(inode, new_buff);
     inode_offset = (141 * fragment) + 2;
     direct_pointers = new_buff[inode_offset];
-    file_size = 512 * (direct_pointers - 1);
+    file_size = 511 * (direct_pointers - 1);
     last_pointer_offset = 19 + ((direct_pointers - 1)*4);
     for(i = 0, j = 3; i < 4; i++, j--){
         if((last_pointer_offset + i) != 0)
@@ -636,7 +714,7 @@ File_Seek(int fd, int offset)
         osErrno = E_SEEK_OUT_OF_BOUNDS;
         return -1;
     }
-    else if(get_file_size(fd) == -2){
+    else if(get_file_size(fd) == -1){
         printf("File Seek: File Not Open.\n");
         osErrno = E_BAD_FD;
         return -1;
