@@ -17,6 +17,7 @@ extern int osErrno;
 char * disk_path;
 int root_inode, root_fragment;
 int next_free_fd;
+int is_a_file ;
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {
@@ -54,6 +55,8 @@ int Dir_Create(char *path);
 int Dir_Size(char *path);
 int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
+int isopen(char *file) ;
+void change_bitmap(int sector_number, int flag) ;
 
 #endif /* __LibFS_h__ */
 
