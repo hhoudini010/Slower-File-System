@@ -315,7 +315,15 @@ FS_Boot(char *path)
        Dir_Create("/a");
        Dir_Create("/b");
        Dir_Create("/a/b");
-
+       Dir_Create("/a/b/c");
+       File_Create("/a/b/c/abc.txt");
+       File_Create("/a/b/c/abcd.txt");
+       int x = File_Open("/a/b/c/abc.txt");
+       File_Open("/a/b/c/abcd.txt");
+       File_Open("/a/b/c/raj.txt");
+       
+       File_Close(x);
+       
        //Todo - Delete this
        char buf[SECTOR_SIZE];
         Disk_Read(4, buf);
@@ -481,6 +489,7 @@ File_Create(char *path)
 int
 File_Open(char *path)
 {
+    printf("File_Open\n");
     int arr[3];
     if(find_free_space(arr) == -1){
         printf("File Open: Too Many Open Files.\n");
@@ -621,7 +630,7 @@ File_Seek(int fd, int offset)
 int
 File_Close(int fd)
 {
-
+    printf("FS_Close\n");
     int i, table_sector, offset;
     char buff[SECTOR_SIZE];
 
