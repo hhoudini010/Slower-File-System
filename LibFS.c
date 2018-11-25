@@ -330,6 +330,46 @@ FS_Boot(char *path)
 
         Dir_Unlink("/e/f");
 
+        Dir_Unlink("/e/f");
+
+
+
+        Disk_Read(4, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(7, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(8, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(9, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(10, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(11, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+        Disk_Read(12, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n");
+
 
 
        if(FS_Sync() == -1)
