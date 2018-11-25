@@ -270,6 +270,7 @@ find_sector(int min_sector){
 int
 FS_Boot(char *path)
 {
+    is_a_file = 0 ;
     printf("FS_Boot %s\n", path);
 
 
@@ -308,8 +309,6 @@ FS_Boot(char *path)
         }
         init_bitmaps();
         Dir_Create("/");
-        
-
 
 
         if(FS_Sync() == -1)
@@ -710,12 +709,6 @@ File_Close(int fd)
     return 0;
 }
 
-int
-File_Unlink(char *file)
-{
-    printf("FS_Unlink\n");
-    return 0;
-}
 
 int check_name_exists(int sec, int frag, char *file_name)
 {
@@ -1515,7 +1508,7 @@ Dir_Unlink(char *path)
 
     printf("size = %d\n",size);
 
-    if(size)
+    if(size && !is_a_file)
     {
         osErrno = E_DIR_NOT_EMPTY ;
         return -1 ;
@@ -1545,6 +1538,96 @@ Dir_Unlink(char *path)
     else
         printf("No\n");
 
+
+    return 0;
+}
+
+int is_exist(char *file)
+{
+	char buf[512], garbage[16] ;
+	char dummy[] = "dummy" ;
+
+	strcpy(buf,file) ;
+	strcat(buf,dummy) ;
+
+	int dir_inode = root_inode ;
+	int dir_fragment = root_fragment ;
+
+	int st = open_dir(buf,&dir_inode,&dir_fragment,garbage) ;
+	if(st == -1)
+		return 0 ;
+	return 1 ;
+}
+
+int isopen(char *file)
+{
+	char buf[512], garbage[16] ;
+	char open_ft[SECTOR_SIZE] ;
+
+	char dummy[] = "dummy" ;
+
+	char file_inode[4] ;
+
+	strcpy(buf,file) ;
+	strcat(buf,dummy) ;
+
+	int dir_inode = root_inode ;
+	int dir_fragment = root_fragment ;
+
+	open_dir(buf,&dir_inode,&dir_fragment,garbage) ;
+	for(int i = 3; i >=0  ;i--)
+	{
+		file_inode[i] = dir_inode % 10 ;
+		dir_inode/=10 ;
+	}
+
+
+	for(int i = 4; i < 8; i++)
+	{
+		Disk_Read(i,open_ft) ;
+		for(int j = 0 ; j < 512; j+=8)
+		{
+			if(open_ft[j] == '0')
+				continue ;
+			int count = 0 ;
+			int k,l ;
+
+			for(k = j+1, l = 0; k < j+4; k++,l++)
+			{
+				if(file_inode[l] != open_ft[k])
+					break;
+				++count ;
+			}
+			if(count == 4 && open_ft[k] == dir_fragment)
+				return 1 ;
+			count = 0 ;
+		}
+	}
+
+	return 0 ;
+}
+
+int
+File_Unlink(char *file)
+{
+    printf("FS_Unlink\n");
+
+    if(!is_exist(file))
+    {
+    	osErrno =  E_NO_SUCH_FILE ;
+    	return -1 ;
+    }
+
+    if(isopen(file))
+    {
+    	osErrno = E_FILE_IN_USE ;
+    	return -1 ;
+    }
+
+
+    is_a_file = 1 ;
+    Dir_Unlink(file) ;
+    is_a_file = 0 ;
 
     return 0;
 }

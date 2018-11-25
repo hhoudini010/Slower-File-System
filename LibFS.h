@@ -17,6 +17,7 @@ extern int osErrno;
 char * disk_path;
 int root_inode, root_fragment;
 int next_free_fd;
+int is_a_file ;
     
 // error types - don't change anything about these!! (even the order!)
 typedef enum {
