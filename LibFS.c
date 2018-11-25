@@ -313,16 +313,16 @@ FS_Boot(char *path)
        init_bitmaps();
        Dir_Create("/");
        Dir_Create("/a");
-       Dir_Create("/e");
-       Dir_Create("/f");
+       Dir_Create("/b");
        Dir_Create("/a/b");
-       Dir_Create("/a/b/c");
-       File_Create("/a/b/c/abc.txt");
-       File_Create("/a/b/c/abcd.txt");
-       int x = File_Open("/a/b/c/abc.txt");
-       File_Open("/a/b/c/abcd.txt");
-       File_Close(x);
-       File_Seek(x, 20);
+
+       // Dir_Create("/a/b/c");
+       // File_Create("/a/b/c/abc.txt");
+       // File_Create("/a/b/c/abcd.txt");
+       // int x = File_Open("/a/b/c/abc.txt");
+       // File_Open("/a/b/c/abcd.txt");
+       // File_Close(x);
+
 
 
        //Todo - Delete this
@@ -331,46 +331,76 @@ FS_Boot(char *path)
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
-        printf("\n\n");
-        Disk_Read(7, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n");
+        printf("\n\n8\n");
         Disk_Read(8, buf);
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
-        printf("\n\n");
+        printf("\n\n9\n");
         Disk_Read(9, buf);
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
-        printf("\n\n");
+        printf("\n\n10\n");
         Disk_Read(10, buf);
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
-        printf("\n\n");
+        printf("\n\n11\n");
         Disk_Read(11, buf);
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
         printf("\n\n");
-        Disk_Read(12, buf);
+        // Disk_Read(11, buf);
+        // for(int i = 0; i<512; i++){
+        //     printf("%d ", buf[i]);
+        // }
+        // printf("\n\n");
+        // Disk_Read(12, buf);
+        // for(int i = 0; i<512; i++){
+        //     printf("%d ", buf[i]);
+        // }
+        // printf("\n\n");
+
+        printf("Empty Sector = %d\n",find_sector(10));
+ 
+        Dir_Unlink("/a/b");
+ 
+        printf("Empty Sector = %d\n",find_sector(10));
+
+
+        printf("\n\n8\n");
+        Disk_Read(8, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n9\n");
+        Disk_Read(9, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n10\n");
+        Disk_Read(10, buf);
+        for(int i = 0; i<512; i++){
+            printf("%d ", buf[i]);
+        }
+        printf("\n\n11\n");
+
+        Disk_Read(11, buf);
         for(int i = 0; i<512; i++){
             printf("%d ", buf[i]);
         }
         printf("\n\n");
 
-        char buffer [512];
+       /* char buffer [512];
        int siz = Dir_Read("/",buffer,40) ;
 
        for(int i = 0; i<512; i++){
             printf("%c ", buffer[i]);
         }
         printf("\n\n");
-
+*/
 
 
        if(FS_Sync() == -1)
@@ -1136,6 +1166,27 @@ Dir_Read(char *path, char *buffer, int sz)
     return total_size;
 }
 
+void
+change_bitmap(int sector_number, int flag)
+{
+    printf("change_bitmap = %d\n",sector_number);
+    int bitmap_sector = (sector_number/(SECTOR_SIZE * 7)) + 1;
+    int sector_index = (sector_number / 7);
+    int sector_offset = (sector_number % 7);
+    char bitmap_buffer[SECTOR_SIZE];
+
+    Disk_Read(bitmap_sector, bitmap_buffer);
+    int val = bitmap_buffer[sector_index],new_val;
+    if(flag)
+        new_val = val + pow(2, sector_offset);
+    else
+        new_val = val - pow(2, sector_offset);
+
+    bitmap_buffer[sector_index] = new_val;
+    Disk_Write(bitmap_sector, bitmap_buffer);
+    FS_Sync();
+}
+
 int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content, int offset,char *myinode, int sec_no_wr, int myinode_secno)
 {
     int remem_ret_val = 0 ;
@@ -1162,11 +1213,12 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
     if(nu_items_table == 1)
         remem_ret_val = 1 ;
 
-
+    printf("I'm in this..................................................\n");
+        
     //Item to be deleted is present in last table and last table has only one entry.
     if(sec_no_wr == tab_num && nu_items_table == 1)
     {
-        //printf("I'm in this\n");
+        printf("I'm in this\n");
         for(int i = 0 ; i < 7; i++)
             buf[i] = '\0' ;
 
@@ -1175,6 +1227,9 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
             myinode[i] = '\0' ;
 
         Disk_Write(tab_num,buf) ;
+        
+        change_bitmap(tab_num,0);
+
         for(int i = 0 ; i < 4; i++)
             myinode[start + i] = '\0' ;
 
@@ -1215,6 +1270,8 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
         for(int i = start; i < start + 4; i++)
             myinode[i] = '\0' ;
 
+        change_bitmap(tab_num,0);
+
         Disk_Write(tab_num,buf) ;
         Disk_Write(myinode_secno,myinode) ;
         FS_Sync() ;
@@ -1231,18 +1288,6 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
 
       Disk_Write(tab_num,buf) ;
      FS_Sync() ;
-
-    //  //....................................//
-    //  printf("Printer code..............................................\n");
-    //  char bufs[512];
-    //     Disk_Read(134,bufs);
-    //     for(int i = 0; i<512; i++){
-    //         printf("%d ",bufs[i]);
-    //     }
-    //     printf("\n");
-
-    // printf("End ............................................................\n");
-
 
     *frag = del_fragment ;
     *sec = del_sector ;
@@ -1361,8 +1406,10 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
 
                 FS_Sync() ;
 
-                 printf("Delete Successful.\n");
-                 return 1 ;
+                change_bitmap(tab,0);
+
+                printf("Delete Successful1.\n");
+                return 1 ;
 
             }
 
@@ -1373,11 +1420,11 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
             {
                 if(st == 3)
                 {
-                    printf("Delete Successful\n");
+                    printf("Delete Successful2\n");
                     return 1 ;
                 }
 
-               printf("Delete Successful.\n");
+               printf("Delete Successful3.\n");
                return 1 ;
                 
             }
@@ -1387,6 +1434,7 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
 
        return 0 ;
 }
+
 
 int
 Dir_Unlink(char *path)
@@ -1438,6 +1486,10 @@ Dir_Unlink(char *path)
     for(int i = offsets; i < offsets + 141; i++)
         bufs[i] = '\0' ;
     bufs[1] = (int)bufs[1] - 1 ;
+
+    if(bufs[1] == 2)
+        change_bitmap(cinode,0);
+
     if(bufs[1] == '\0')
         bufs[0] = '\0' ;
     Disk_Write(cinode,bufs) ;
