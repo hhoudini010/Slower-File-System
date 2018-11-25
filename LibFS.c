@@ -371,8 +371,10 @@ FS_Boot(char *path)
         printf("\n\n");
 
 
+
        if(FS_Sync() == -1)
             return -1 ;
+
     }
 
         //Disk image exists.
@@ -640,6 +642,7 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         int size = (int)buf[offset] ;
 
         for(int i = start, count = 0 ; count < size ; i += 4)
+
         {
             tab = 0 ;
             for(int j = 0 ; j < 4 ; j++)
@@ -842,6 +845,7 @@ Dir_Create(char *path)
     create_dir(path, root_inode, root_fragment, empty_sector, file_fragment);
 
     Disk_Read(8, buf);
+
     int offset = (141 * file_fragment) + 2;
     for(int i = 0; i<512; i++){
         printf("%d ", buf[i]);
@@ -1039,9 +1043,320 @@ Dir_Read(char *path, char *buffer, int sz)
     return total_size;
 }
 
+int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content, int offset,char *myinode, int sec_no_wr, int myinode_secno)
+{
+    int remem_ret_val = 0 ;
+
+
+    printf("find_and_delete_last\n");
+    printf(" n_tables = %d\n",n_tables );
+    int start = offset + 17 ;
+    char buf[SECTOR_SIZE] ;
+
+    start += 4*(n_tables-1) ;
+
+    printf("start = %d\n",start);
+
+    int tab_num = 0 ;
+    for(int i = start ; i < start + 4 ; i++)
+        tab_num = tab_num * 10 + myinode[i];
+
+    printf("tab_num = %d\n", tab_num);
+    //Gets the last table.
+    Disk_Read(tab_num,buf) ;
+
+    int nu_items_table = buf[1] ;
+    if(nu_items_table == 1)
+        remem_ret_val = 1 ;
+
+
+    //Item to be deleted is present in last table and last table has only one entry.
+    if(sec_no_wr == tab_num && nu_items_table == 1)
+    {
+        //printf("I'm in this\n");
+        for(int i = 0 ; i < 7; i++)
+            buf[i] = '\0' ;
+
+        myinode[offset] = (int)myinode[offset] - 1 ;
+        for(int i = start; i < start + 4; i++)
+            myinode[i] = '\0' ;
+
+        Disk_Write(tab_num,buf) ;
+        for(int i = 0 ; i < 4; i++)
+            myinode[start + i] = '\0' ;
+
+        Disk_Write(myinode_secno,myinode) ;
+
+        FS_Sync() ;
+
+        return 2 ;
+    }
+
+    nu_items_table-- ;
+
+    int start_read = 2 + (nu_items_table * 5) ;
+
+    printf("Start_read : %d\n",start_read );
+
+
+    int del_sector = 0;
+    int del_fragment ;
+    int i,j ;
+
+    for(i=0,j=start_read;i<4;i++,j++)
+    {   
+        del_sector = del_sector * 10 + buf[j];
+    }
+
+    del_fragment = (int)buf[j] ;
+
+    //Clear table if there was only one entry.
+
+    if(nu_items_table == 0)
+    {
+        *frag = del_fragment ;
+        *sec = del_sector ;
+        for(int j = 0 ; j < 7; j++)
+            buf[j] = '\0' ;
+        myinode[offset] = (int)myinode[offset] - 1 ;
+        for(int i = start; i < start + 4; i++)
+            myinode[i] = '\0' ;
+
+        Disk_Write(tab_num,buf) ;
+        Disk_Write(myinode_secno,myinode) ;
+        FS_Sync() ;
+        return 1 ;
+    }
+
+
+    //If there are multiple entries
+
+        for(int j = start_read; j < start_read + 5; j++)
+            buf[j] = '\0' ;
+        buf[1] = (int)buf[1] - 1 ;
+
+
+      Disk_Write(tab_num,buf) ;
+     FS_Sync() ;
+
+    //  //....................................//
+    //  printf("Printer code..............................................\n");
+    //  char bufs[512];
+    //     Disk_Read(134,bufs);
+    //     for(int i = 0; i<512; i++){
+    //         printf("%d ",bufs[i]);
+    //     }
+    //     printf("\n");
+
+    // printf("End ............................................................\n");
+
+
+    *frag = del_fragment ;
+    *sec = del_sector ;
+
+    if(remem_ret_val)
+        return 1 ;
+    else
+        return 0 ;
+
+}
+
+int check_in_table_delete(char *tab, int cinode, int cfragment, int n_tables, char *pinode_content, int offset, char *myinode, int sec_no_wr, int myinode_secno )
+{
+    printf("check_in_table_delete\n");
+    char temp[5] ;
+    int frag,sec ;
+    int k = 0,j ;
+
+    int start = 2 ;
+
+    for(int i = 0 ; i < tab[1] ; i++)
+    {
+        k = 3;
+        sec = 0;
+        for(j = start ; j < start + 4; j++)
+            sec = sec * 10 + tab[j] ;
+        frag = tab[j];
+        start+=5 ;
+
+        if(frag == cfragment && sec == cinode)
+        {
+            // for(j = start; j < start + 4; j++)
+            //     tab[j] = '\0' ;
+            // tab[start+4] = '\0' ;
+
+            int ret_val = find_and_delete_last(&frag, &sec, n_tables, pinode_content, offset,myinode,sec_no_wr, myinode_secno) ;
+            printf("frag =%d , sect = %d\n",frag,sec );
+
+            if(ret_val == 2)
+                return 3 ;
+
+
+            Disk_Read(sec_no_wr,tab) ;
+
+            start-=5 ;
+
+            int temp_arr[4] ;
+            for(int j =0 ; j < 4; j++)
+            {
+                temp_arr[j] = sec%10 ;
+                sec/=10 ;
+            }
+
+            for(j = start ; j < start + 4; j++)
+                tab[j] = temp_arr[k--] ;
+
+            tab[j] = frag ;
+
+            Disk_Write(sec_no_wr,tab) ;
+            FS_Sync() ;
+
+            if(ret_val)
+                return 2 ;
+
+            return 1 ;
+        }
+    }
+
+    return 0 ;
+}
+
+int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
+{
+        printf("search_in_pointer\n");
+        char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE] ;
+        Disk_Read(dir_inode,buf) ;
+
+        int tab, remember_pointer_nos = 0, remember_table_size = 0 ;
+
+        int offset = (141 * dir_fragment) + 2  ;
+
+         int start = offset + 17 ;
+         int size = (int)buf[offset] ;
+
+         if(size == 1)
+            remember_pointer_nos = 1 ;
+
+        for(int i = start,count = 0 ;count < size ;i+=4)
+        {
+
+            tab = 0 ;
+            for(int j = 0 ; j < 4 ; j++)
+           {
+               tab = tab * 10 + buf[i+j] ;
+            }
+           
+           // printf("Hey val %d\n", tab);
+            Disk_Read(tab,newbuf) ;
+
+            if(newbuf[1] == 1)
+                remember_table_size = 1 ;
+
+            //Delete the whole table
+            if(remember_table_size == 1 && remember_pointer_nos == 1)
+            {
+                for(int j = 0; j < 7; j++)
+                    newbuf[j] = '\0' ;
+
+                Disk_Write(tab,newbuf) ;
+
+                for(int j = 0 ; j < 4; j++)
+                    buf[i+j] = '\0' ;
+
+                buf[offset] = '\0' ;
+                Disk_Write(dir_inode,buf) ;
+
+                FS_Sync() ;
+
+                 printf("Delete Successful.\n");
+                 return 1 ;
+
+            }
+
+
+
+            int st = check_in_table_delete(newbuf, cinode, cfragment, size, buf, offset,buf, tab, dir_inode) ;
+            if(st)
+            {
+                if(st == 3)
+                {
+                    printf("Delete Successful\n");
+                    return 1 ;
+                }
+
+               printf("Delete Successful.\n");
+               return 1 ;
+                
+            }
+            else
+                count++ ;
+       }
+
+       return 0 ;
+}
+
 int
 Dir_Unlink(char *path)
 {
     printf("Dir_Unlink\n");
+
+    if(strcmp(path,"/") == 0)
+    {
+        osErrno = E_ROOT_DIR ;
+        return -1 ;
+    }
+
+    int pinode = root_inode ;
+    int pfragment = root_fragment ;
+
+    int cinode = root_inode ;
+    int cfragment = root_fragment ;
+
+    char file_name[16] ;
+    open_dir(path,&pinode,&pfragment,file_name) ;
+
+    //char file_name[16];
+    char new_path[280] ;
+    strcpy(new_path,path) ;
+    strcat(new_path,"/dummy") ;
+
+
+    open_dir(new_path,&cinode,&cfragment,file_name) ;
+
+    char buf[SECTOR_SIZE] ;
+    Disk_Read(cinode,buf) ;
+
+    int offset = (141*cfragment) + 2 ;
+    int size = buf[offset] ;
+
+    printf("size = %d\n",size);
+
+    if(size)
+    {
+        osErrno = E_DIR_NOT_EMPTY ;
+        return -1 ;
+    }
+
+    //Delete the inodes.
+    char bufs[SECTOR_SIZE] ;
+    Disk_Read(cinode,bufs) ;
+
+    int offsets = (141 * cfragment) + 2  ;
+    for(int i = offsets; i < offsets + 141; i++)
+        bufs[i] = '\0' ;
+    bufs[1] = (int)bufs[1] - 1 ;
+    if(bufs[1] == '\0')
+        bufs[0] = '\0' ;
+    Disk_Write(cinode,bufs) ;
+    FS_Sync() ;
+
+    int st = search_in_pointer(pinode,pfragment,cinode,cfragment) ;
+
+    if(st)
+        printf("Yes\n");
+    else
+        printf("No\n");
+
+
     return 0;
 }
