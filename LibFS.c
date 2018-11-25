@@ -163,12 +163,8 @@ make_inode (int sector_number, int mode, char *name){
             buff[1] += 1;
         }
     }
-    //Todo - change this 
-    //size of the file/directory.
-    if(mode)
-        buff[offset] = 0;
-    else
-        buff[offset] = 5;
+
+    buff[offset] = 0;
 
     for(i = 0; i < strlen(name); i++){
         buff[offset + i + 2] = name[i];
@@ -309,100 +305,14 @@ FS_Boot(char *path)
             printf("Write failed.\n");
             osErrno = E_GENERAL ;
             return -1 ;
-       }
-       init_bitmaps();
-       Dir_Create("/");
-       Dir_Create("/a");
-       Dir_Create("/b");
-       Dir_Create("/a/b");
-       Dir_Create("/a/b/c");
-       File_Create("/a/b/c/abc.txt");
-       File_Create("/a/b/c/abcd.txt");
-       int x = File_Open("/a/b/c/abc.txt");
-       File_Open("/a/b/c/abcd.txt");
-       File_Open("/a/b/c/raj.txt");
-       
-       File_Close(x);
-       
-       //Todo - Delete this
-       char buf[SECTOR_SIZE];
-        Disk_Read(4, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
         }
-        printf("\n\n8\n");
-        Disk_Read(8, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n9\n");
-        Disk_Read(9, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n10\n");
-        Disk_Read(10, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n11\n");
-        Disk_Read(11, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n");
-        // Disk_Read(11, buf);
-        // for(int i = 0; i<512; i++){
-        //     printf("%d ", buf[i]);
-        // }
-        // printf("\n\n");
-        // Disk_Read(12, buf);
-        // for(int i = 0; i<512; i++){
-        //     printf("%d ", buf[i]);
-        // }
-        // printf("\n\n");
-
-        printf("Empty Sector = %d\n",find_sector(10));
- 
-        Dir_Unlink("/a/b");
- 
-        printf("Empty Sector = %d\n",find_sector(10));
+        init_bitmaps();
+        Dir_Create("/");
+        
 
 
-        printf("\n\n8\n");
-        Disk_Read(8, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n9\n");
-        Disk_Read(9, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n10\n");
-        Disk_Read(10, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n11\n");
 
-        Disk_Read(11, buf);
-        for(int i = 0; i<512; i++){
-            printf("%d ", buf[i]);
-        }
-        printf("\n\n");
-
-       /* char buffer [512];
-       int siz = Dir_Read("/",buffer,40) ;
-
-       for(int i = 0; i<512; i++){
-            printf("%c ", buffer[i]);
-        }
-        printf("\n\n");
-*/
-
-
-       if(FS_Sync() == -1)
+        if(FS_Sync() == -1)
             return -1 ;
 
     }
@@ -525,7 +435,139 @@ File_Read(int fd, void *buffer, int size)
 int
 File_Write(int fd, void *buffer, int size)
 {
-    printf("FS_Write\n");
+    printf("FS_Write%d\n",size);
+
+    char  *input = (char *)buffer;
+    char inode_buffer[SECTOR_SIZE];
+    printf("buffer = %c\n",input[3]);
+
+    int sector_num,sector_frag,i, j, table_sector, table_offset, inode, fragment, inode_offset, file_size,file_pointer;
+    int least_bit,most_bit,empty_sector;
+    char buff[SECTOR_SIZE], new_buff[SECTOR_SIZE],sector_buffer[SECTOR_SIZE];
+    if(size == 0)
+        return 1;
+    if(size>30*511)
+    {
+        printf("File Write: File too big\n");
+        osErrno = E_FILE_TOO_BIG;
+        return -1;
+    }
+    if(fd < 64){
+        table_sector = 4;
+        table_offset = (fd*8);
+    }
+    else if(fd > 63 && fd < 128){
+        table_sector = 5;
+        table_offset = (fd*8) - 64;
+    }
+    else if(fd > 127 && fd < 192){
+        table_sector = 6;
+        table_offset = (fd*8) - 128;
+    }
+    else if(fd > 191 && fd < 256){
+        table_sector = 7;
+        table_offset = (fd*8) - 192;
+    }
+    Disk_Read(table_sector, buff);
+
+    if(buff[table_offset] == 0){
+        printf("File Write: File Not Open\n");
+        osErrno = E_BAD_FD;
+        return -1;
+    }
+
+    least_bit = buff[table_offset + 6];
+    most_bit = buff[table_offset + 7];
+
+    file_pointer = (most_bit * 128) + least_bit;
+
+    if(size + file_pointer > 20 * 511)
+    {
+        printf("File Write: Not enough space\n");
+        osErrno = E_NO_SPACE;
+        return -1;
+    }
+    sector_num = 0;
+
+    for(i =1;i<=4;i++)
+    {
+        sector_num = (sector_num * 10) +buff[table_offset + i]; 
+    }
+    sector_frag = buff[table_offset + 5];
+
+    printf("inode = %d , %d\n",sector_num,sector_frag );
+
+    Disk_Read(sector_num,inode_buffer);
+
+    inode_offset = (141*(sector_frag)) + 2;
+    printf("hello\n");
+    
+
+    int buffer_it=0;
+    int sector_pointer = file_pointer%511,sector_select;
+
+    printf("Pointers = %d,%d\n",sector_pointer,file_pointer);
+
+    for(int sector_it = file_pointer/511 ; buffer_it<size ; sector_it++)
+    {
+
+
+        if(inode_buffer[inode_offset] == sector_it)
+        {
+            printf("hello\n");
+            empty_sector = 0;
+            do
+            {
+                empty_sector = find_sector(empty_sector);
+                printf("Sector = %d\n",empty_sector);
+                Disk_Read(empty_sector, sector_buffer);
+
+            }while(sector_buffer[0] == 'i');
+
+            int sector_select = empty_sector;
+            int shift;
+            shift = 4*inode_buffer[inode_offset];
+
+            inode_buffer[inode_offset]++;
+
+            for(i=3;i>=0;i--)
+            {
+                inode_buffer[inode_offset+shift+i+17] = sector_select%10;
+                sector_select /= 10;
+            }
+            sector_buffer[0] = 'd';
+            Disk_Write(empty_sector,sector_buffer);
+            Disk_Write(sector_num,inode_buffer);
+            FS_Sync();
+            change_bitmap(empty_sector,1);
+
+        }
+
+
+
+
+        printf("sector_it = %d\n",sector_it );
+        printf("inode_offset = %d\n",inode_offset );
+        sector_select = 0;
+        for(i=0;i<4;i++)
+        {
+            sector_select = (sector_select * 10) + inode_buffer[inode_offset + 17 + i + (4 * sector_it)];
+            printf("sector_select = %d\n",sector_select );
+        }
+
+        Disk_Read(sector_select,buff);
+        for(sector_pointer++;sector_pointer<512 && buffer_it<size;sector_pointer++)
+        {
+            buff[sector_pointer] = input[buffer_it++];
+        }
+
+        Disk_Write(sector_select,buff);
+
+        sector_pointer = 0;
+    }
+
+
+
     return 0;
 }
 
@@ -577,6 +619,7 @@ get_file_size(int fd){
 int
 File_Seek(int fd, int offset)
 {
+    printf("File_Seek\n");
     if(offset < 0){
         printf("File Seek: Negative Offset.\n");
         osErrno = E_SEEK_OUT_OF_BOUNDS;
@@ -1505,3 +1548,4 @@ Dir_Unlink(char *path)
 
     return 0;
 }
+
