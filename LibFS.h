@@ -49,6 +49,7 @@ int File_Write(int fd, void *buffer, int size);
 int File_Seek(int fd, int offset);
 int File_Close(int fd);
 int File_Unlink(char *file);
+int checkintable(char *tab, int *dir_inode, int *dir_fragment, char *fname) ;
 
 // directory ops
 int open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname);

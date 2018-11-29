@@ -200,11 +200,12 @@ int is_file_dir(char *path)
     char newbuf[256] ;
     strcpy(newbuf,path);
     strcat(newbuf,"/dummy");
-    printf("%s\n",newbuf);
     int dir_inode = root_inode ;
     int dir_fragment = root_fragment ;
+    //printf("%s\n",newbuf);
 
     int st = open_dir(newbuf,&dir_inode,&dir_fragment,buf) ;
+   // printf("St = %d\n",st);
     if(st == -1)
         return -1 ;
 
@@ -221,7 +222,6 @@ int is_file_dir(char *path)
 int
 FS_Sync()
 {
-    printf("FS_Sync\n");
     if(Disk_Save(disk_path) == -1){
         printf("Disk save error\n");
         osErrno = E_GENERAL;
@@ -285,8 +285,7 @@ find_sector(int min_sector){
             break;
     }
 
-    printf("empty_sector = %d\n",empty_sector);
-    // cout<<"empty_sector = "<<empty_sector<<"\n";
+   
     return empty_sector;
 
 }
@@ -295,7 +294,6 @@ int
 FS_Boot(char *path)
 {
     is_a_file = 0 ;
-    printf("FS_Boot %s\n", path);
 
 
     // disk_path = new char[strlen(path)] ;
@@ -370,8 +368,7 @@ FS_Boot(char *path)
 int
 File_Create(char *path)
 {
-    printf("FS_Create\n");
-
+    
     int rt = is_file_dir(path) ;
     if(rt == 1 || rt == 2)
     {
@@ -418,9 +415,9 @@ File_Create(char *path)
         else
             count++ ;
     }
-    if(count >= size){
-        printf("File Create: Success, No Such File/Directory Found\n");
-    }
+    // if(count >= size){
+    //     printf("File Create: Success\n");
+    // }
     int frag = make_inode(sector_number, 0, file_name);
 
     create_dir(path, root_inode, root_fragment, sector_number, frag);
@@ -430,7 +427,6 @@ File_Create(char *path)
 int
 File_Open(char *path)
 {
-    printf("File_Open\n");
     int arr[3];
     if(find_free_space(arr) == -1){
         printf("File Open: Too Many Open Files.\n");
@@ -548,11 +544,11 @@ File_Read(int fd, void *buffer, int size)
 int
 File_Write(int fd, void *buffer, int size)
 {
-    printf("FS_Write%d\n",size);
+  
 
     char  *input = (char *)buffer;
     char inode_buffer[SECTOR_SIZE];
-    printf("buffer = %c\n",input[3]);
+   
 
     int sector_num,sector_frag,i, j, table_sector, table_offset, inode, fragment, inode_offset, file_size,file_pointer;
     int least_bit,most_bit,empty_sector;
@@ -608,31 +604,28 @@ File_Write(int fd, void *buffer, int size)
     }
     sector_frag = buff[table_offset + 5];
 
-    printf("inode = %d , %d\n",sector_num,sector_frag );
-
     Disk_Read(sector_num,inode_buffer);
 
     inode_offset = (141*(sector_frag)) + 2;
-    printf("hello\n");
+   
     
 
     int buffer_it=0;
     int sector_pointer = file_pointer%511,sector_select;
 
-    printf("Pointers = %d,%d\n",sector_pointer,file_pointer);
-
+   
     for(int sector_it = file_pointer/511 ; buffer_it<size ; sector_it++)
     {
 
 
         if(inode_buffer[inode_offset] == sector_it)
         {
-            printf("hello\n");
+          
             empty_sector = 0;
             do
             {
                 empty_sector = find_sector(empty_sector);
-                printf("Sector = %d\n",empty_sector);
+              
                 Disk_Read(empty_sector, sector_buffer);
 
             }while(sector_buffer[0] == 'i');
@@ -656,16 +649,12 @@ File_Write(int fd, void *buffer, int size)
 
         }
 
-
-
-
-        printf("sector_it = %d\n",sector_it );
-        printf("inode_offset = %d\n",inode_offset );
+      
         sector_select = 0;
         for(i=0;i<4;i++)
         {
             sector_select = (sector_select * 10) + inode_buffer[inode_offset + 17 + i + (4 * sector_it)];
-            printf("sector_select = %d\n",sector_select );
+           
         }
 
         Disk_Read(sector_select,buff);
@@ -747,7 +736,7 @@ get_file_size(int fd){
 int
 File_Seek(int fd, int offset)
 {
-    printf("File_Seek\n");
+   
     if(offset < 0){
         printf("File Seek: Negative Offset.\n");
         osErrno = E_SEEK_OUT_OF_BOUNDS;
@@ -801,7 +790,7 @@ File_Seek(int fd, int offset)
 int
 File_Close(int fd)
 {
-    printf("FS_Close\n");
+   
     int i, table_sector, offset;
     char buff[SECTOR_SIZE];
 
@@ -841,7 +830,7 @@ File_Close(int fd)
 
 int check_name_exists(int sec, int frag, char *file_name)
 {
-    printf("check_name_exists\n");
+  
     char buf[SECTOR_SIZE] ;
     char fname[16] ;
     int j = 0 ;
@@ -857,14 +846,13 @@ int check_name_exists(int sec, int frag, char *file_name)
     fname[j] = '\0' ;
     if(strcmp(fname,file_name) == 0)
         return 1 ;
-    printf("0\n");
     return 0 ;
 
 }
 
 int checkintable(char *tab, int *dir_inode, int *dir_fragment, char *fname)
 {
-    printf("checkintable\n");
+    
     char temp[5] ;
     int frag, sec ;
     int k = 0, j ;
@@ -942,14 +930,17 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
             int st = checkintable(newbuf, dir_inode, dir_fragment,file_name) ;
             if(st)
             {
-                open_dir(new_path, dir_inode, dir_fragment, fname) ;
-                return 0;
+                st = open_dir(new_path, dir_inode, dir_fragment, fname) ;
+                if(st == 0)
+                    return 0;
+                else
+                    count++;
             }
             else
                 count++ ;
         }
         if(count >= size){
-            printf("Open Directory: No Such File/Directory Found\n");
+            // printf("Open Directory: No Such File/Directory Found\n");
             return -1;
         }
     }
@@ -961,7 +952,7 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
 void
 create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fragment)
 {
-    printf("Change_dir\n");
+  
 
     char file_name[16];
     int i,flag,offset;
@@ -976,12 +967,11 @@ create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fr
         offset = (141 * dir_sector) + 2;
         if(buff[offset] == 0)
         {
-            printf("Empty directory\n");
+            // printf("Empty directory\n");
 
             do
             {
                 empty_sector = find_sector(empty_sector);
-                printf("Sector = %d\n",empty_sector);
                 Disk_Read(empty_sector, buffer);
 
             }while(buffer[0] == 'i');
@@ -1022,7 +1012,7 @@ create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fr
         }
         else
         {
-            printf("Non-Empty directory\n");
+            // printf("Non-Empty directory\n");
 
             sector_select = buff[offset] ;
             int internal_offset,sector_num=0;
@@ -1055,7 +1045,7 @@ create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fr
                 do
                 {
                     empty_sector = find_sector(empty_sector);
-                    printf("Sector = %d\n",empty_sector);
+                   
                     Disk_Read(empty_sector, buffer);
 
                 }while(buffer[0] == 'i');
@@ -1100,7 +1090,7 @@ create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fr
 int
 Dir_Create(char *path)
 {
-    printf("Dir_Create %s\n", path);
+  
 
     int rt = is_file_dir(path) ;
     if(rt == 1 || rt == 2)
@@ -1126,10 +1116,10 @@ Dir_Create(char *path)
 
     if(get_name(path, fname) == 0)
     {
-        printf("Directory name\n");
+        
         return 0;
     }
-    printf("File Name = %s\n",fname );
+   
 
     if(!checkvalid(fname))
     {
@@ -1144,10 +1134,7 @@ Dir_Create(char *path)
     Disk_Read(8, buf);
 
     int offset = (141 * file_fragment) + 2;
-    for(int i = 0; i<512; i++){
-        printf("%d ", buf[i]);
-    }
-    printf("\n");
+    
 
     return 0;
 
@@ -1185,7 +1172,7 @@ int get_Size(int inode_sector,int inode_fragment)
                tab = tab * 10 + buf[i+j] ;
             }
            
-           // printf("Hey val %d\n", tab);
+           
             Disk_Read(tab,newbuf) ;
 
             //getfromtable(newbuf,&inode_sector,&inode_fragment) ;
@@ -1220,7 +1207,7 @@ int get_Size(int inode_sector,int inode_fragment)
 int Dir_Size(char *path) 
 {
     char new_path[280];
-   printf("Dir_Size %s\n", path); 
+
 
    char file_name[16];
 
@@ -1230,11 +1217,9 @@ int Dir_Size(char *path)
 
    strcpy(new_path,path);
    strcat(new_path,"/dummy");
-   printf("%s\n",path);
+
 
    open_dir(new_path,&dir_inode,&dir_sector,file_name);
-
-   printf("dir inode = %d,%d\n",dir_inode,dir_sector);
 
 
    int siz = get_Size(dir_inode,dir_sector) ;
@@ -1246,16 +1231,13 @@ int Dir_Size(char *path)
 int
 Dir_Read(char *path, char *buffer, int sz)
 {
-    printf("Dir_Read\n");
-
     
-
     int inode_sector=root_inode;
     int inode_fragment=root_fragment;
     char new_path[280],read_buffer[1024],newbuf[1024],file_name[16];
     strcpy(new_path,path);
     strcat(new_path,"/dummy");
-    printf("%s\n",path);
+    
 
     open_dir(new_path,&inode_sector,&inode_fragment,file_name);
 
@@ -1331,7 +1313,7 @@ Dir_Read(char *path, char *buffer, int sz)
             buffer[index++]=inode_frag +'0';
         }
 
-        for(index;index<sz;index++)
+        for(;index<sz;index++)
         {
             buffer[index]= '\0';
         }
@@ -1344,7 +1326,7 @@ Dir_Read(char *path, char *buffer, int sz)
 void
 change_bitmap(int sector_number, int flag)
 {
-    printf("change_bitmap = %d\n",sector_number);
+   
     int bitmap_sector = (sector_number/(SECTOR_SIZE * 7)) + 1;
     int sector_index = (sector_number / 7);
     int sector_offset = (sector_number % 7);
@@ -1367,20 +1349,19 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
     int remem_ret_val = 0 ;
 
 
-    printf("find_and_delete_last\n");
-    printf(" n_tables = %d\n",n_tables );
+   
     int start = offset + 17 ;
     char buf[SECTOR_SIZE] ;
 
     start += 4*(n_tables-1) ;
 
-    printf("start = %d\n",start);
+    
 
     int tab_num = 0 ;
     for(int i = start ; i < start + 4 ; i++)
         tab_num = tab_num * 10 + myinode[i];
 
-    printf("tab_num = %d\n", tab_num);
+    
     //Gets the last table.
     Disk_Read(tab_num,buf) ;
 
@@ -1388,12 +1369,12 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
     if(nu_items_table == 1)
         remem_ret_val = 1 ;
 
-    printf("I'm in this..................................................\n");
+    
         
     //Item to be deleted is present in last table and last table has only one entry.
     if(sec_no_wr == tab_num && nu_items_table == 1)
     {
-        printf("I'm in this\n");
+       
         for(int i = 0 ; i < 7; i++)
             buf[i] = '\0' ;
 
@@ -1418,8 +1399,6 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
     nu_items_table-- ;
 
     int start_read = 2 + (nu_items_table * 5) ;
-
-    printf("Start_read : %d\n",start_read );
 
 
     int del_sector = 0;
@@ -1476,7 +1455,6 @@ int find_and_delete_last(int *frag, int *sec, int n_tables, char *pinode_content
 
 int check_in_table_delete(char *tab, int cinode, int cfragment, int n_tables, char *pinode_content, int offset, char *myinode, int sec_no_wr, int myinode_secno )
 {
-    printf("check_in_table_delete\n");
     char temp[5] ;
     int frag,sec ;
     int k = 0,j ;
@@ -1494,12 +1472,9 @@ int check_in_table_delete(char *tab, int cinode, int cfragment, int n_tables, ch
 
         if(frag == cfragment && sec == cinode)
         {
-            // for(j = start; j < start + 4; j++)
-            //     tab[j] = '\0' ;
-            // tab[start+4] = '\0' ;
+            
 
             int ret_val = find_and_delete_last(&frag, &sec, n_tables, pinode_content, offset,myinode,sec_no_wr, myinode_secno) ;
-            printf("frag =%d , sect = %d\n",frag,sec );
 
             if(ret_val == 2)
                 return 3 ;
@@ -1536,7 +1511,6 @@ int check_in_table_delete(char *tab, int cinode, int cfragment, int n_tables, ch
 
 int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
 {
-        printf("search_in_pointer\n");
         char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE] ;
         Disk_Read(dir_inode,buf) ;
 
@@ -1559,7 +1533,7 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
                tab = tab * 10 + buf[i+j] ;
             }
            
-           // printf("Hey val %d\n", tab);
+           
             Disk_Read(tab,newbuf) ;
 
             if(newbuf[1] == 1)
@@ -1583,7 +1557,7 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
 
                 change_bitmap(tab,0);
 
-                printf("Delete Successful1.\n");
+                printf("Delete Successful.\n");
                 return 1 ;
 
             }
@@ -1595,11 +1569,11 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
             {
                 if(st == 3)
                 {
-                    printf("Delete Successful2\n");
+                    printf("Delete Successful\n");
                     return 1 ;
                 }
 
-               printf("Delete Successful3.\n");
+               printf("Delete Successful.\n");
                return 1 ;
                 
             }
@@ -1614,7 +1588,6 @@ int search_in_pointer(int dir_inode,int dir_fragment, int cinode, int cfragment)
 int
 Dir_Unlink(char *path)
 {
-    printf("Dir_Unlink\n");
 
     if(strcmp(path,"/") == 0)
     {
@@ -1645,7 +1618,6 @@ Dir_Unlink(char *path)
     int offset = (141*cfragment) + 2 ;
     int size = buf[offset] ;
 
-    printf("size = %d\n",size);
 
     int rt = is_file_dir(path) ;
 
@@ -1735,10 +1707,10 @@ Dir_Unlink(char *path)
 
     int st = search_in_pointer(pinode,pfragment,cinode,cfragment) ;
 
-    if(st)
-        printf("Yes\n");
-    else
-        printf("No\n");
+    // if(st)
+    //     printf("Yes\n");
+    // else
+    //     printf("No\n");
 
 
     return 0;
@@ -1803,7 +1775,6 @@ int isopen(char *file)
 			{
 				if(file_inode[l] != open_ft[k])
 					break;
-                printf("%d ",open_ft[k] );
 				++count ;
 			}
 			if(count == 4 && open_ft[k] == dir_fragment)
@@ -1818,7 +1789,7 @@ int isopen(char *file)
 int
 File_Unlink(char *file)
 {
-    printf("FS_Unlink\n");
+  
 
     if(!is_exist(file))
     {
@@ -1885,35 +1856,6 @@ print_bitmaps(){
     for(int i = 0; i < 512; i++){
         printf("%d ", buff[i]);
     }
-    // Disk_Read(14, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n\n");
-    // Disk_Read(15, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n\n");
-    // Disk_Read(16, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n\n");
-    // Disk_Read(17, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n\n");
-    // Disk_Read(18, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n\n");
-    // Disk_Read(19, buff);
-    // for(int i = 0; i < 512; i++){
-    //     printf("%d ", buff[i]);
-    // }
-    // printf("\n");
+   
 }
 
