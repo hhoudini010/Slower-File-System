@@ -193,6 +193,31 @@ make_inode (int sector_number, int mode, char *name){
     return buff[1]-1;
 }
 
+int is_file_dir(char *path)
+{
+
+    char buf[SECTOR_SIZE] ;
+    char newbuf[256] ;
+    strcpy(newbuf,path);
+    strcat(newbuf,"/dummy");
+    printf("%s\n",newbuf);
+    int dir_inode = root_inode ;
+    int dir_fragment = root_fragment ;
+
+    int st = open_dir(newbuf,&dir_inode,&dir_fragment,buf) ;
+    if(st == -1)
+        return -1 ;
+
+    Disk_Read(dir_inode,buf) ;
+
+    int offset = (141 * dir_fragment) + 2 ;
+    if(buf[offset + 1] == 'f')
+        return 1 ;
+    else 
+        return 2 ;
+
+}
+
 int
 FS_Sync()
 {
@@ -346,6 +371,14 @@ int
 File_Create(char *path)
 {
     printf("FS_Create\n");
+
+    int rt = is_file_dir(path) ;
+    if(rt == 1 || rt == 2)
+    {
+        printf("File name already exists\n");
+        osErrno = E_GENERAL ;
+        return -1 ;
+    }
     /*    create a new inode
         Mode bit 0 - file
         Mode bit 1 - directory */
@@ -506,7 +539,7 @@ File_Read(int fd, void *buffer, int size)
             flag = 0;
         }
     }
-    buffer = &temp_buffer;
+    strcpy(buffer,temp_buffer);
     return read_bytes;
 }
 
@@ -889,14 +922,14 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         char buf[SECTOR_SIZE], newbuf[SECTOR_SIZE] ;
         Disk_Read(*dir_inode, buf) ;
 
-        int tab ;
+        int tab,i;
         int count;
         int offset = (141 * (*dir_fragment)) + 2  ;
 
         int start = offset + 17 ;
         int size = (int)buf[offset] ;
 
-        for(int i = start, count = 0 ; count < size ; i += 4)
+        for(i = start, count = 0 ; count < size ; i += 4)
 
         {
             tab = 0 ;
@@ -917,7 +950,6 @@ open_dir(char *path, int *dir_inode, int *dir_fragment, char* fname)
         }
         if(count >= size){
             printf("Open Directory: No Such File/Directory Found\n");
-            osErrno = E_NO_SUCH_FILE;
             return -1;
         }
     }
@@ -930,6 +962,7 @@ void
 create_dir(char *path, int dir_inode, int dir_sector, int file_inode,int file_fragment)
 {
     printf("Change_dir\n");
+
     char file_name[16];
     int i,flag,offset;
     flag = 0;
@@ -1068,6 +1101,14 @@ int
 Dir_Create(char *path)
 {
     printf("Dir_Create %s\n", path);
+
+    int rt = is_file_dir(path) ;
+    if(rt == 1 || rt == 2)
+    {
+        printf("File name already exists\n");
+        osErrno = E_GENERAL ;
+        return -1 ;
+    }
 
     char buf[SECTOR_SIZE] ;
     char fname[16];
@@ -1294,6 +1335,7 @@ Dir_Read(char *path, char *buffer, int sz)
         {
             buffer[index]= '\0';
         }
+
     }    
     
     return total_size;
@@ -1605,6 +1647,22 @@ Dir_Unlink(char *path)
 
     printf("size = %d\n",size);
 
+    int rt = is_file_dir(path) ;
+
+    if(rt == 1 && !is_a_file)
+    {
+        printf("Is a file. Not a directory\n");
+        osErrno = E_GENERAL ;
+         return -1; 
+    }
+
+    if(rt == -1 && !is_a_file)
+    {
+        printf("No such directory exists\n");
+        osErrno = E_GENERAL ;
+        return -1 ;
+    }
+
     if(size && !is_a_file)
     {
         osErrno = E_DIR_NOT_EMPTY ;
@@ -1776,6 +1834,14 @@ File_Unlink(char *file)
 
 
     is_a_file = 1 ;
+
+    if(is_file_dir(file) == 2)
+    {
+        is_a_file = 0 ;
+        printf("Is a directory. Not a file\n");
+        osErrno = E_GENERAL ;
+        return -1 ;
+    }
     Dir_Unlink(file) ;
     is_a_file = 0 ;
 
@@ -1785,9 +1851,9 @@ File_Unlink(char *file)
 void
 print_bitmaps(){
     char buff[SECTOR_SIZE];
-    Disk_Read(4, buff);
+    Disk_Read(0, buff);
     for(int i = 0; i < 512; i++){
-        printf("%d ", buff[i]);
+        printf("%c ", buff[i]);
     }
     printf("\n\n");
     Disk_Read(8, buff);
@@ -1807,13 +1873,47 @@ print_bitmaps(){
     printf("\n\n");
     Disk_Read(11, buff);
     for(int i = 0; i < 512; i++){
-        printf("%c ", buff[i]);
+        printf("%d ", buff[i]);
     }
     printf("\n\n");
     Disk_Read(12, buff);
     for(int i = 0; i < 512; i++){
-        printf("%c ", buff[i]);
+        printf("%d ", buff[i]);
     }
-    printf("\n");
+    printf("\n\n");
+    Disk_Read(13, buff);
+    for(int i = 0; i < 512; i++){
+        printf("%d ", buff[i]);
+    }
+    // Disk_Read(14, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n\n");
+    // Disk_Read(15, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n\n");
+    // Disk_Read(16, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n\n");
+    // Disk_Read(17, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n\n");
+    // Disk_Read(18, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n\n");
+    // Disk_Read(19, buff);
+    // for(int i = 0; i < 512; i++){
+    //     printf("%d ", buff[i]);
+    // }
+    // printf("\n");
 }
 
